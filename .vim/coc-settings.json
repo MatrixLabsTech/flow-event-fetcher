@@ -1,0 +1,8 @@
+{
+    "coc.preferences.rootPatterns": [
+        ".git",
+        ".hg",
+        ".projections.json",
+        "go.mod"
+    ]
+}
