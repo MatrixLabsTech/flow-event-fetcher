@@ -9,7 +9,6 @@ import (
 	"github.com/Lucklyric/ultimate-flow-event-fetcher/spork"
 
 	"github.com/gin-gonic/gin"
-	"github.com/onflow/flow-go-sdk/client"
 	log "github.com/sirupsen/logrus"
 )
 
