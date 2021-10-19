@@ -202,3 +202,36 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 	}
 	return ret, nil
 }
+
+func EventToJSON(e *cadence.Event) interface{} {
+	preparedFields := make([]interface{}, 0)
+	for i, field := range e.EventType.Fields {
+		value := e.Fields[i]
+		preparedFields = append(preparedFields,
+			map[string]interface{}{
+				"name":  field.Identifier,
+				"value": value.String(),
+			},
+		)
+	}
+	return preparedFields
+}
+
+func BlockEventsToJSON(e []client.BlockEvents) []interface{} {
+	result := make([]interface{}, 0)
+
+	for _, blockEvent := range e {
+		if len(blockEvent.Events) > 0 {
+			for _, event := range blockEvent.Events {
+				result = append(result, map[string]interface{}{
+					"blockID":       blockEvent.Height,
+					"index":         event.EventIndex,
+					"type":          event.Type,
+					"transactionId": event.TransactionID.String(),
+					"values":        eventToJSON(&(event.Value))})
+			}
+		}
+	}
+
+	return result
+}

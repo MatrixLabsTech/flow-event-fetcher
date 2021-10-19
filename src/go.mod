@@ -1,4 +1,4 @@
-module matrixlab/ultimate-flow-event-fetcher
+module github.com/Lucklyric/ultimate-flow-event-fetcher
 
 go 1.17
 
