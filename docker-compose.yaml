@@ -1,0 +1,10 @@
+version: '3'
+services:
+  onflow-fetcher-service:
+    environment:
+      - GIN_MODE=release
+      - SPORK_JSON_URL=https://raw.githubusercontent.com/Lucklyric/flow-spork-info/main/spork.json
+      - PORT=8989
+    build: .
+    ports:
+      - '8989:8989'
