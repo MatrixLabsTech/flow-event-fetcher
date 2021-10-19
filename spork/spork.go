@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"sync"
 
@@ -111,8 +112,8 @@ func (ss *SporkStore) SyncSpork() error {
 }
 
 func (ss *SporkStore) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAccessNodeList, error) {
-	if end-start > 250 {
-		return nil, errors.New("cannot query more than 250 blocks")
+	if end-start > 2000 {
+		return nil, errors.New("cannot query more than 2000 blocks")
 	}
 
 	result := make([]ResolvedAccessNodeList, 0)
@@ -163,11 +164,11 @@ func (ss *SporkStore) locateNode(index uint64) (int, error) {
 	return ret, nil
 }
 
-func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uint64) ([]interface{}, error) {
+func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error) {
 
 	ctx := context.Background()
 
-	ret := make([]interface{}, 0)
+	ret := make([]client.BlockEvents, 0)
 
 	resolvedAccessNodeList, err := ss.resolveAccessNodes(uint64(start), uint64(end))
 	if err != nil {
@@ -177,7 +178,7 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 	for _, node := range resolvedAccessNodeList {
 		fmt.Println(node)
 
-		flowClient, err := client.New(node.AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(20e6))
+		flowClient, err := client.New(node.AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
 		defer flowClient.Close()
 		defer log.Info("close client from:", node.AccessNode)
 
@@ -185,16 +186,19 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 			return nil, err
 		}
 
-		results, err := flowClient.GetEventsForHeightRange(ctx, client.EventRangeQuery{
-			Type:        event,
-			StartHeight: node.Start,
-			EndHeight:   node.End,
-		})
+		for i := uint64(node.Start); i < node.End; i+=200 {
+			results, err := flowClient.GetEventsForHeightRange(ctx, client.EventRangeQuery{
+				Type:        event,
+				StartHeight: i,
+				EndHeight:   uint64(math.Min(float64(node.End), float64(i+200))),
+			})
 
-		if err != nil {
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
+			ret = append(ret, results...)
 		}
-		ret = append(ret, (&EventResult{BlockEvents: results}).JSON())
+
 	}
 	return ret, nil
 }

@@ -46,10 +46,10 @@ func eventToJSON(e *cadence.Event) interface{} {
 	return preparedFields
 }
 
-func (e *EventResult) JSON() interface{} {
+func blockEventsToJSON(e []client.BlockEvents) []interface{} {
 	result := make([]interface{}, 0)
 
-	for _, blockEvent := range e.BlockEvents {
+	for _, blockEvent := range e {
 		if len(blockEvent.Events) > 0 {
 			for _, event := range blockEvent.Events {
 				result = append(result, map[string]interface{}{
@@ -78,7 +78,9 @@ func queryEventByBlockRange(c *gin.Context) {
         return
 	}
 
-	c.JSON(http.StatusOK, ret)
+    jsonRet := blockEventsToJSON(ret);
+	log.Info(fmt.Sprintf("Got %d, events", len(jsonRet)))
+	c.JSON(http.StatusOK, jsonRet)
 
 }
 
