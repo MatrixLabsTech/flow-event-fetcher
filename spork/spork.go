@@ -95,10 +95,10 @@ func (e *EventResult) JSON() interface{} {
 		if len(blockEvent.Events) > 0 {
 			for _, event := range blockEvent.Events {
 				result = append(result, map[string]interface{}{
-					"blockID":       blockEvent.Height,
+					"blockId":       blockEvent.Height,
 					"index":         event.EventIndex,
 					"type":          event.Type,
-					"eventID":       event.ID(),
+					"eventId":       event.ID(),
 					"transactionId": event.TransactionID.String(),
 					"values":        eventToJSON(&(event.Value))})
 			}
@@ -240,9 +240,10 @@ func BlockEventsToJSON(e []client.BlockEvents) []interface{} {
 		if len(blockEvent.Events) > 0 {
 			for _, event := range blockEvent.Events {
 				result = append(result, map[string]interface{}{
-					"blockID":       blockEvent.Height,
+					"blockId":       blockEvent.Height,
 					"index":         event.EventIndex,
 					"type":          event.Type,
+					"eventId":       event.ID(),
 					"transactionId": event.TransactionID.String(),
 					"values":        eventToJSON(&(event.Value))})
 			}

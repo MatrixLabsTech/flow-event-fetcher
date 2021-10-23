@@ -80,7 +80,8 @@ docker build . -t onflow-fetcher-service
 
 ```bash
 docker run -d \
-    -p 8989:8989
+    --rm \
+    -p 8989:8989 \
     -e GIN_MODE=release \
     -e SPORK_JSON_URL=https://raw.githubusercontent.com/Lucklyric/flow-spork-info/main/spork.json \
     -e PORT=8989 \
