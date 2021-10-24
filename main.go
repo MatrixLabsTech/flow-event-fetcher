@@ -21,13 +21,18 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/Lucklyric/ultimate-flow-event-fetcher/spork"
 
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
+
+type QueryEventByBlockRangeDto struct {
+	Event string `json:"event"`
+	Start int    `json:"start"`
+	End   int    `json:"end"`
+}
 
 var url string = ""
 
@@ -37,20 +42,25 @@ func version(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"version": "0.1.0"})
 }
 
-func callSyncSpork(c *gin.Context) {
+func syncSpork(c *gin.Context) {
 	err := sporkStore.SyncSpork()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 	}
+	c.JSON(http.StatusOK, gin.H{"spork": sporkStore.SporkList})
 }
 
 func queryEventByBlockRange(c *gin.Context) {
-	event := c.PostForm("event")
-	start, _ := strconv.ParseInt(c.PostForm("start"), 10, 64)
-	end, _ := strconv.ParseInt(c.PostForm("end"), 10, 64)
-	log.Info(fmt.Sprintf("query %s, from %d to %d", event, start, end))
+	var queryEventByBlockRangeDto QueryEventByBlockRangeDto
+	err := c.Bind(&queryEventByBlockRangeDto)
+	if err != nil {
+		log.Error(err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	log.Info(fmt.Sprintf("query %s, from %d to %d", queryEventByBlockRangeDto.Event, queryEventByBlockRangeDto.Start, queryEventByBlockRangeDto.End))
 
-	ret, err := sporkStore.QueryEventByBlockRange(event, uint64(start), uint64(end))
+	ret, err := sporkStore.QueryEventByBlockRange(queryEventByBlockRangeDto.Event, uint64(queryEventByBlockRangeDto.Start), uint64(queryEventByBlockRangeDto.End))
 	if err != nil {
 		log.Error(err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -80,6 +90,7 @@ func main() {
 	router := gin.Default()
 
 	router.GET("/version", version)
+	router.GET("/syncSpork", syncSpork)
 	router.POST("/queryEventByBlockRange", queryEventByBlockRange)
 
 	log.Info("Starting server...")
