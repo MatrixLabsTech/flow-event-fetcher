@@ -50,6 +50,14 @@ func syncSpork(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"spork": sporkStore.SporkList})
 }
 
+func queryLatestBlockHeight(c *gin.Context) {
+	height, err := sporkStore.QueryLatestBlockHeight()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	c.JSON(http.StatusOK, gin.H{"latestBlockHeight": height})
+}
+
 func queryEventByBlockRange(c *gin.Context) {
 	var queryEventByBlockRangeDto QueryEventByBlockRangeDto
 	err := c.Bind(&queryEventByBlockRangeDto)
@@ -92,6 +100,7 @@ func main() {
 	router.GET("/version", version)
 	router.GET("/syncSpork", syncSpork)
 	router.POST("/queryEventByBlockRange", queryEventByBlockRange)
+	router.GET("/queryLatestBlockHeight", queryLatestBlockHeight)
 
 	log.Info("Starting server...")
 	router.Run(":" + port)
