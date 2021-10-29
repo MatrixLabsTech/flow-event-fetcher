@@ -34,7 +34,7 @@ type QueryEventByBlockRangeDto struct {
 	End   int    `json:"end"`
 }
 
-var url string = ""
+var url = ""
 
 var sporkStore *spork.SporkStore = nil
 
@@ -48,6 +48,14 @@ func syncSpork(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	c.JSON(http.StatusOK, gin.H{"spork": sporkStore.SporkList})
+}
+
+func queryLatestBlockHeight(c *gin.Context) {
+	height, err := sporkStore.QueryLatestBlockHeight()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	c.JSON(http.StatusOK, gin.H{"latestBlockHeight": height})
 }
 
 func queryEventByBlockRange(c *gin.Context) {
@@ -74,10 +82,13 @@ func queryEventByBlockRange(c *gin.Context) {
 }
 
 func init() {
+
 	url := os.Getenv("SPORK_JSON_URL")
-	if url == "" {
-		url = "https://raw.githubusercontent.com/Lucklyric/flow-spork-info/main/spork.json"
-	}
+
+    if url == "" {
+        log.Fatal("SPORK_JSON_URL is empty")
+    }
+
 	sporkStore = spork.New(url)
 
 }
@@ -89,9 +100,12 @@ func main() {
 	}
 	router := gin.Default()
 
+	router.Use(gin.LoggerWithWriter(os.Stderr))
+
 	router.GET("/version", version)
 	router.GET("/syncSpork", syncSpork)
 	router.POST("/queryEventByBlockRange", queryEventByBlockRange)
+	router.GET("/queryLatestBlockHeight", queryLatestBlockHeight)
 
 	log.Info("Starting server...")
 	router.Run(":" + port)

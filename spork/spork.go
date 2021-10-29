@@ -68,6 +68,8 @@ type SporkStore struct {
 	SporkList []Spork
 
 	url string
+
+	readClient *client.Client
 }
 
 type EventResult struct {
@@ -110,11 +112,15 @@ func (e *EventResult) JSON() interface{} {
 
 func New(url string) *SporkStore {
 	ss := &SporkStore{url: url}
-	var err error = nil
-	ss.SyncSpork()
+	err := ss.SyncSpork()
 	if err != nil {
 		panic(err)
 	}
+	err = ss.newReadClient()
+	if err != nil {
+		panic(err)
+	}
+
 	return ss
 }
 
@@ -180,6 +186,34 @@ func (ss *SporkStore) locateNode(index uint64) (int, error) {
 	return ret, nil
 }
 
+
+func (ss *SporkStore) newReadClient() error {
+	flowClient, err := client.New(ss.SporkList[len(ss.SporkList)-1].AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
+	if err != nil {
+		return err
+	}
+	ss.readClient = flowClient
+	return nil
+}
+
+func (ss *SporkStore) checkReaderHealthy() error {
+	ctx := context.Background()
+	err := ss.readClient.Ping(ctx)
+	if err != nil {
+		return ss.newReadClient()
+	}
+	return nil
+}
+
+func (ss *SporkStore) QueryLatestBlockHeight() (uint64, error) {
+	ss.Lock()
+	defer ss.Unlock()
+	ss.checkReaderHealthy()
+	ctx := context.Background()
+	header, err := ss.readClient.GetLatestBlockHeader(ctx, true)
+	return header.Height, err
+}
+
 func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error) {
 
 	ctx := context.Background()
@@ -202,7 +236,7 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 			return nil, err
 		}
 
-		for i := uint64(node.Start); i < node.End; i+=200 {
+		for i := uint64(node.Start); i <= node.End; i += 200 {
 			results, err := flowClient.GetEventsForHeightRange(ctx, client.EventRangeQuery{
 				Type:        event,
 				StartHeight: i,
