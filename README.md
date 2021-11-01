@@ -15,6 +15,8 @@ To make life easier, we provide the **SporkStore** go module, which can internal
 
 - [x] An wrapped REST API service that can be quickly launched using Docker.
     ![rest-api](./images/res-api.png)
+
+- [x] Query latest block height
 - [ ] Query transactions
 
 ## Usage 👀
@@ -100,4 +102,4 @@ Welcome to contribute 💌
 <p align="left">
   <img width="50%" src="./images/cid-matrix.logo.png">
 </p>
-ChainIDE 🎆 MatrixLab
+MatrixLab 🎆 ChainIDE

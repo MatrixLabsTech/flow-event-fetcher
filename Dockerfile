@@ -12,9 +12,8 @@ WORKDIR /app
 COPY --from=buildContainer /go/src/app/restapi .
 
 ENV GIN_MODE release
-ENV SPORK_JSON_URL https://raw.githubusercontent.com/Lucklyric/flow-spork-info/main/spork.json
 
 ENV PORT 8989
 EXPOSE 8989
 
-CMD ["./restapi"]
+CMD ["sh","-c", "./restapi -port ${PORT} -sporkUrl ${SPORK_URL}"]
