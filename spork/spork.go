@@ -129,7 +129,7 @@ func New(url string, maxQueryBlocks uint64, queryBatchSize uint64) *SporkStore {
 }
 
 func (ss *SporkStore) String() string {
-    return fmt.Sprintf("SporkStore{url: %s, maxQueryBlocks: %d, queryBatchSize: %d}", ss.url, ss.maxQueryBlocks, ss.queryBatchSize)
+	return fmt.Sprintf("SporkStore{url: %s, maxQueryBlocks: %d, queryBatchSize: %d}", ss.url, ss.maxQueryBlocks, ss.queryBatchSize)
 }
 
 func (ss *SporkStore) SyncSpork() error {
@@ -143,7 +143,7 @@ func (ss *SporkStore) SyncSpork() error {
 
 func (ss *SporkStore) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAccessNodeList, error) {
 	if end-start > ss.maxQueryBlocks {
-        return nil, errors.New("total blocks is greater than maxQueryBlocks")
+		return nil, errors.New("total blocks is greater than maxQueryBlocks")
 	}
 
 	result := make([]ResolvedAccessNodeList, 0)
@@ -235,7 +235,7 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 	for _, node := range resolvedAccessNodeList {
 		fmt.Println(node)
 
-		flowClient, err := client.New(node.AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
+		flowClient, err := client.New(node.AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(140e6))
 		defer flowClient.Close()
 		defer log.Info("close client from:", node.AccessNode)
 
@@ -247,7 +247,7 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 			results, err := flowClient.GetEventsForHeightRange(ctx, client.EventRangeQuery{
 				Type:        event,
 				StartHeight: i,
-				EndHeight:   uint64(math.Min(float64(node.End), float64(i+ss.queryBatchSize))),
+				EndHeight:   uint64(math.Min(float64(node.End), float64(i+ss.queryBatchSize - 1))),
 			})
 
 			if err != nil {
