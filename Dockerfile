@@ -16,4 +16,4 @@ ENV GIN_MODE release
 ENV PORT 8989
 EXPOSE 8989
 
-CMD ["./restapi"]
+CMD ["sh","-c", "./restapi -port ${PORT} -sporkUrl ${SPORK_URL}"]

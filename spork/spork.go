@@ -70,6 +70,10 @@ type SporkStore struct {
 	url string
 
 	readClient *client.Client
+
+	maxQueryBlocks uint64
+
+	queryBatchSize uint64
 }
 
 type EventResult struct {
@@ -110,8 +114,8 @@ func (e *EventResult) JSON() interface{} {
 	return result
 }
 
-func New(url string) *SporkStore {
-	ss := &SporkStore{url: url}
+func New(url string, maxQueryBlocks uint64, queryBatchSize uint64) *SporkStore {
+	ss := &SporkStore{url: url, maxQueryBlocks: maxQueryBlocks, queryBatchSize: queryBatchSize}
 	err := ss.SyncSpork()
 	if err != nil {
 		panic(err)
@@ -124,6 +128,10 @@ func New(url string) *SporkStore {
 	return ss
 }
 
+func (ss *SporkStore) String() string {
+    return fmt.Sprintf("SporkStore{url: %s, maxQueryBlocks: %d, queryBatchSize: %d}", ss.url, ss.maxQueryBlocks, ss.queryBatchSize)
+}
+
 func (ss *SporkStore) SyncSpork() error {
 	ss.Lock()
 	defer ss.Unlock()
@@ -134,8 +142,8 @@ func (ss *SporkStore) SyncSpork() error {
 }
 
 func (ss *SporkStore) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAccessNodeList, error) {
-	if end-start > 2000 {
-		return nil, errors.New("cannot query more than 2000 blocks")
+	if end-start > ss.maxQueryBlocks {
+        return nil, errors.New("total blocks is greater than maxQueryBlocks")
 	}
 
 	result := make([]ResolvedAccessNodeList, 0)
@@ -186,7 +194,6 @@ func (ss *SporkStore) locateNode(index uint64) (int, error) {
 	return ret, nil
 }
 
-
 func (ss *SporkStore) newReadClient() error {
 	flowClient, err := client.New(ss.SporkList[len(ss.SporkList)-1].AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
 	if err != nil {
@@ -236,11 +243,11 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 			return nil, err
 		}
 
-		for i := uint64(node.Start); i <= node.End; i += 200 {
+		for i := uint64(node.Start); i <= node.End; i += ss.queryBatchSize {
 			results, err := flowClient.GetEventsForHeightRange(ctx, client.EventRangeQuery{
 				Type:        event,
 				StartHeight: i,
-				EndHeight:   uint64(math.Min(float64(node.End), float64(i+200))),
+				EndHeight:   uint64(math.Min(float64(node.End), float64(i+ss.queryBatchSize))),
 			})
 
 			if err != nil {

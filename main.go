@@ -18,12 +18,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
 
-	"github.com/Lucklyric/ultimate-flow-event-fetcher/spork"
-
+	"github.com/MatrixLabTech/flow-event-fetcher/spork"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -81,23 +81,23 @@ func queryEventByBlockRange(c *gin.Context) {
 
 }
 
-func init() {
-
-	url := os.Getenv("SPORK_JSON_URL")
-
-    if url == "" {
-        log.Fatal("SPORK_JSON_URL is empty")
-    }
-
-	sporkStore = spork.New(url)
-
-}
-
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8989"
+	port := flag.String("port", "8686", "port to listen on")
+	sporkUrl := flag.String("sporkUrl", "", "spork json url")
+	maxQueryBlocks := flag.Uint64("maxQueryBlocks", 2000, "max query blocks")
+	queryBatchSize := flag.Uint64("queryBatchSize", 200, "query batch size")
+	flag.Parse()
+
+	// check sporkUrl not empty
+	if *sporkUrl == "" {
+		log.Fatal("sporkUrl is empty")
 	}
+
+	sporkStore = spork.New(*sporkUrl, *maxQueryBlocks, *queryBatchSize)
+	// display formatted sporkStore configuration
+	log.Info(fmt.Sprintf("sporkStore configuration: %s", sporkStore.String()))
+
+	// setup gin
 	router := gin.Default()
 
 	router.Use(gin.LoggerWithWriter(os.Stderr))
@@ -108,5 +108,10 @@ func main() {
 	router.GET("/queryLatestBlockHeight", queryLatestBlockHeight)
 
 	log.Info("Starting server...")
-	router.Run(":" + port)
+	router.Run(":" + *port)
+
+    // exit
+
+
+
 }
