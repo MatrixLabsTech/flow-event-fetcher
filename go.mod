@@ -1,4 +1,4 @@
-module github.com/MatrixLabTech/flow-event-fetcher
+module github.com/MatrixLabsTech/flow-event-fetcher
 
 go 1.17
 

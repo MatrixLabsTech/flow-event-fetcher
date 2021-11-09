@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/MatrixLabTech/flow-event-fetcher/spork"
+	"github.com/MatrixLabsTech/flow-event-fetcher/spork"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )

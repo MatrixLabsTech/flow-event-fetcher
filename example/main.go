@@ -19,11 +19,11 @@ package main
 import (
     "fmt"
 
-    "github.com/MatrixLabTech/flow-event-fetcher/spork"
+    "github.com/MatrixLabsTech/flow-event-fetcher/spork"
 )
 
 func main() {
-    sporkJsonUrl := "https://raw.githubusercontent.com/MatrixLabTech/flow-spork-info/main/spork.json"
+    sporkJsonUrl := "https://raw.githubusercontent.com/MatrixLabsTech/flow-spork-info/main/spork.json"
     maxQueryCount := 2000
     batchSize := 5
     sporkStore := spork.New(sporkJsonUrl, uint64(maxQueryCount), uint64(batchSize))

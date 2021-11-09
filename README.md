@@ -85,7 +85,7 @@ docker run -d \
     --rm \
     -p 8989:8989 \
     -e GIN_MODE=release \
-    -e SPORK_JSON_URL=https://raw.githubusercontent.com/Lucklyric/flow-spork-info/main/spork.json \
+    -e SPORK_JSON_URL=https://raw.githubusercontent.com/MatrixLabsTech/flow-spork-info/main/spork.json \
     -e PORT=8989 \
     onflow-fetcher-service
 ```
