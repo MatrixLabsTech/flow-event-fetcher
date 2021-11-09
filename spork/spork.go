@@ -161,7 +161,7 @@ func (ss *SporkStore) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAc
 	if startNodeIdx == endNodeIdx {
 		result = append(result, ResolvedAccessNodeList{Start: start, End: end, AccessNode: ss.SporkList[startNodeIdx].AccessNode})
 	} else {
-		result = append(result, ResolvedAccessNodeList{Start: start, End: ss.SporkList[endNodeIdx].RootHeight, AccessNode: ss.SporkList[startNodeIdx].AccessNode})
+		result = append(result, ResolvedAccessNodeList{Start: start, End: ss.SporkList[endNodeIdx].RootHeight-1, AccessNode: ss.SporkList[startNodeIdx].AccessNode})
 		result = append(result, ResolvedAccessNodeList{Start: ss.SporkList[endNodeIdx].RootHeight, End: end, AccessNode: ss.SporkList[endNodeIdx].AccessNode})
 	}
 
@@ -260,8 +260,8 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 	return ret, nil
 }
 
-func EventToJSON(e *cadence.Event) interface{} {
-	preparedFields := make([]interface{}, 0)
+func EventToJSON(e *cadence.Event) []map[string]interface{} {
+	preparedFields := make([]map[string]interface{}, 0)
 	for i, field := range e.EventType.Fields {
 		value := e.Fields[i]
 		preparedFields = append(preparedFields,
@@ -274,8 +274,8 @@ func EventToJSON(e *cadence.Event) interface{} {
 	return preparedFields
 }
 
-func BlockEventsToJSON(e []client.BlockEvents) []interface{} {
-	result := make([]interface{}, 0)
+func BlockEventsToJSON(e []client.BlockEvents) []map[string]interface{} {
+	result := make([]map[string]interface{}, 0)
 
 	for _, blockEvent := range e {
 		if len(blockEvent.Events) > 0 {

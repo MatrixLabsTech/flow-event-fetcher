@@ -23,14 +23,12 @@ import (
 )
 
 func main() {
-    sporkJsonUrl := "https://raw.githubusercontent.com/Lucklyric/flow-spork-info/main/spork.json"
+    sporkJsonUrl := "https://raw.githubusercontent.com/MatrixLabTech/flow-spork-info/main/spork.json"
     maxQueryCount := 2000
     batchSize := 5
     sporkStore := spork.New(sporkJsonUrl, uint64(maxQueryCount), uint64(batchSize))
-    // display sprokStore above setup
 
     event := "A.1654653399040a61.FlowToken.TokensDeposited"
-
 
     // store will automatically fetch events
     // {19050753 19051853 access.mainnet.nodes.onflow.org:9000}
@@ -41,6 +39,7 @@ func main() {
     fmt.Println("Total fetched blocks:", len(ret))
     jsonRet := spork.BlockEventsToJSON(ret)
     fmt.Println("Total fetched events:", len(jsonRet))
+    fmt.Println("First Block's blockId:", jsonRet[0]["blockId"])
 
     ret, err = sporkStore.QueryEventByBlockRange(event, 13405050, 13406060)
     if err != nil {
@@ -49,4 +48,15 @@ func main() {
     fmt.Println("Total fetched blocks:", len(ret))
     jsonRet = spork.BlockEventsToJSON(ret)
     fmt.Println("Total fetched events:", len(jsonRet))
+    fmt.Println("First Block's blockId:", jsonRet[0]["blockId"])
+
+    // store will automatically fetch events with
+    // {11905073 19051853 access.mainnet.nodes.onflow.org:9000}
+	ret, err = sporkStore.QueryEventByBlockRange(event, 19050753, 19051853)
+	if err != nil {
+		panic(err)
+	}
+	jsonRet = spork.BlockEventsToJSON(ret)
+    fmt.Println("Total fetched events:", len(jsonRet))
+    fmt.Println("First Block's blockId:", jsonRet[0]["blockId"])
 }
