@@ -1,6 +1,6 @@
 /**
  * spork/spork.go
- * Copyright (c) 2021 Alvin(Xinyao) Sun <asun@whitematrix.io>
+ * Copyright (c) 2021 Alvin(Xinyao) Sun <lucklyric@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
