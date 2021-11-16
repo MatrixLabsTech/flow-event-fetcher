@@ -1,6 +1,6 @@
 /**
  * spork/spork.go
- * Copyright (c) 2021 Alvin(Xinyao) Sun <lucklyric@gmail.com>
+ * Copyright (c) 2021 Alvin(Xinyao) Sun <asun@matrixworld.org>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -161,7 +161,7 @@ func (ss *SporkStore) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAc
 	if startNodeIdx == endNodeIdx {
 		result = append(result, ResolvedAccessNodeList{Start: start, End: end, AccessNode: ss.SporkList[startNodeIdx].AccessNode})
 	} else {
-		result = append(result, ResolvedAccessNodeList{Start: start, End: ss.SporkList[endNodeIdx].RootHeight-1, AccessNode: ss.SporkList[startNodeIdx].AccessNode})
+		result = append(result, ResolvedAccessNodeList{Start: start, End: ss.SporkList[endNodeIdx].RootHeight - 1, AccessNode: ss.SporkList[startNodeIdx].AccessNode})
 		result = append(result, ResolvedAccessNodeList{Start: ss.SporkList[endNodeIdx].RootHeight, End: end, AccessNode: ss.SporkList[endNodeIdx].AccessNode})
 	}
 
@@ -218,6 +218,9 @@ func (ss *SporkStore) QueryLatestBlockHeight() (uint64, error) {
 	ss.checkReaderHealthy()
 	ctx := context.Background()
 	header, err := ss.readClient.GetLatestBlockHeader(ctx, true)
+	if err != nil {
+		return 0, err
+	}
 	return header.Height, err
 }
 
@@ -247,7 +250,7 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 			results, err := flowClient.GetEventsForHeightRange(ctx, client.EventRangeQuery{
 				Type:        event,
 				StartHeight: i,
-				EndHeight:   uint64(math.Min(float64(node.End), float64(i+ss.queryBatchSize - 1))),
+				EndHeight:   uint64(math.Min(float64(node.End), float64(i+ss.queryBatchSize-1))),
 			})
 
 			if err != nil {
