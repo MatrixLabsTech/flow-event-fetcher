@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"github.com/MatrixLabsTech/flow-event-fetcher/spork"
+
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -39,13 +40,15 @@ var url = ""
 var sporkStore *spork.SporkStore = nil
 
 func version(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"version": "0.1.0"})
+	c.JSON(http.StatusOK, gin.H{"version": "0.2.1"})
 }
 
 func syncSpork(c *gin.Context) {
 	err := sporkStore.SyncSpork()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		log.Error(err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{"spork": sporkStore.SporkList})
 }
@@ -53,7 +56,9 @@ func syncSpork(c *gin.Context) {
 func queryLatestBlockHeight(c *gin.Context) {
 	height, err := sporkStore.QueryLatestBlockHeight()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		log.Error(err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{"latestBlockHeight": height})
 }
@@ -82,7 +87,7 @@ func queryEventByBlockRange(c *gin.Context) {
 }
 
 func main() {
-	port := flag.String("port", "8686", "port to listen on")
+	port := flag.String("port", "8989", "port to listen on")
 	sporkUrl := flag.String("sporkUrl", "", "spork json url")
 	maxQueryBlocks := flag.Uint64("maxQueryBlocks", 2000, "max query blocks")
 	queryBatchSize := flag.Uint64("queryBatchSize", 200, "query batch size")
@@ -90,14 +95,13 @@ func main() {
 
 	// check sporkUrl not empty
 	if *sporkUrl == "" {
-		log.Fatal("sporkUrl is empty")
+		*sporkUrl = "https://raw.githubusercontent.com/MatrixLabsTech/flow-spork-info/main/spork.json"
 	}
 
 	sporkStore = spork.New(*sporkUrl, *maxQueryBlocks, *queryBatchSize)
+
 	// display formatted sporkStore configuration
 	log.Info(fmt.Sprintf("sporkStore configuration: %s", sporkStore.String()))
-
-	// setup gin
 	router := gin.Default()
 
 	router.Use(gin.LoggerWithWriter(os.Stderr))
@@ -109,9 +113,4 @@ func main() {
 
 	log.Info("Starting server...")
 	router.Run(":" + *port)
-
-    // exit
-
-
-
 }
