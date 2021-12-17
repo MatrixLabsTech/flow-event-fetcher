@@ -10,10 +10,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build -v -mod mod -ldflags "-s -w" -o restapi .
 FROM alpine:latest
 WORKDIR /app
 COPY --from=buildContainer /go/src/app/restapi .
+COPY --from=buildContainer /go/src/app/start.sh .
 
 ENV GIN_MODE release
 
 ENV PORT 8989
 EXPOSE 8989
 
-CMD ["sh","-c", "./restapi -port ${PORT} -sporkUrl ${SPORK_URL}"]
+CMD ["sh", "./start.sh"]
