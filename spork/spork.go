@@ -29,6 +29,7 @@ type FlowClient interface {
 	QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error)
 	QueryLatestBlockHeight() (uint64, error)
 	SyncSpork() error
+    Close() error
 }
 
 type ResolvedAccessNodeList struct {

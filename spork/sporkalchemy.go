@@ -140,3 +140,13 @@ func (alchemy *SporkAlchemy) String() string {
 	// all basic information
 	return fmt.Sprintf("SporkAlchemy: {endPoint: %s, maxQueryBlocks: %d, queryBatchSize: %d}", alchemy.endPoint, alchemy.maxQueryBlocks, alchemy.queryBatchSize)
 }
+
+// close the spork alchemy
+func (alchemy *SporkAlchemy) Close() error {
+    if alchemy.flowClient != nil {
+        err := alchemy.flowClient.Close()
+        log.Info("SporkAlchemy: flow client closed")
+        return err
+    }
+    return nil
+}
