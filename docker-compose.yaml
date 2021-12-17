@@ -3,8 +3,11 @@ services:
   onflow-fetcher-service:
     environment:
       - GIN_MODE=release
-      - SPORK_URL=https://raw.githubusercontent.com/Lucklyric/flow-spork-info/main/spork.json
+      - SPORK_JSON_URL=https://raw.githubusercontent.com/MatrixLabsTech/flow-spork-info/main/spork.json
+      - MAX_QUERY_BLOCKS=2000
+      - QUERY_BATCH_SIZE=200
       - PORT=8989
+      - USE_ALCHEMY=false
     build: .
     ports:
       - '8989:8989'
