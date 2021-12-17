@@ -216,3 +216,13 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 	}
 	return events, nil
 }
+
+// close connection
+func (ss *SporkStore) Close() error {
+    if ss.readClient != nil {
+        err := ss.readClient.Close()
+        log.Info("close read client")
+        return err
+    }
+    return nil
+}
