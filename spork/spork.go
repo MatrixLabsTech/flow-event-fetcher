@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package spork
 
 import (
@@ -29,7 +30,7 @@ type FlowClient interface {
 	QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error)
 	QueryLatestBlockHeight() (uint64, error)
 	SyncSpork() error
-    Close() error
+	Close() error
 }
 
 type ResolvedAccessNodeList struct {

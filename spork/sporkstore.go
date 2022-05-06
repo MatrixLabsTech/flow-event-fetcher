@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package spork
 
 import (
@@ -29,6 +30,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
+
+var NetworkConfigURL = "https://raw.githubusercontent.com/onflow/flow/master/sporks.json"
 
 type Spork struct {
 	Name       string `json:"name"`
@@ -54,12 +57,59 @@ func ReadJSONFromUrl(url string) ([]Spork, error) {
 	return sporkList, nil
 }
 
+type FlowNetworkConfig struct {
+	Networks map[string]map[string]StageNetworkConfig `json:"networks"`
+}
+
+type StageNetworkConfig struct {
+	Name        string      `json:"name"`
+	RootHeight  json.Number `json:"rootHeight"`
+	AccessNodes []string    `json:"accessNodes"`
+}
+
+// ReadFlowNetworkConfigFromUrl reads the flow network config from the given url.
+func ReadFlowNetworkConfigFromUrl(stage string) ([]Spork, error) {
+	resp, err := http.Get(NetworkConfigURL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	networks := FlowNetworkConfig{}
+	err = json.NewDecoder(resp.Body).Decode(&networks)
+	if err != nil {
+		return nil, err
+	}
+	if networks.Networks == nil {
+		return nil, errors.New("no networks found")
+	}
+	cfg, ok := networks.Networks[stage]
+	if !ok {
+		return nil, fmt.Errorf("no network found for stage %s", stage)
+	}
+	sporkList := make([]Spork, 0, len(cfg))
+	for _, c := range cfg {
+		rootHeight, err := c.RootHeight.Int64()
+		if err != nil {
+			return nil, err
+		}
+		var accessNode string
+		if len(c.AccessNodes) > 0 {
+			accessNode = c.AccessNodes[0]
+		}
+		sporkList = append(sporkList, Spork{
+			Name:       c.Name,
+			RootHeight: uint64(rootHeight),
+			AccessNode: accessNode,
+		})
+	}
+	return sporkList, nil
+}
+
 type SporkStore struct {
 	sync.Mutex
 
 	SporkList []Spork
-
-	url string
+	stage     string
 
 	readClient *client.Client
 
@@ -68,8 +118,8 @@ type SporkStore struct {
 	queryBatchSize uint64
 }
 
-func NewSporkStore(url string, maxQueryBlocks uint64, queryBatchSize uint64) *SporkStore {
-	ss := &SporkStore{url: url, maxQueryBlocks: maxQueryBlocks, queryBatchSize: queryBatchSize}
+func NewSporkStore(stage string, maxQueryBlocks uint64, queryBatchSize uint64) *SporkStore {
+	ss := &SporkStore{stage: stage, maxQueryBlocks: maxQueryBlocks, queryBatchSize: queryBatchSize}
 	err := ss.SyncSpork()
 	if err != nil {
 		panic(err)
@@ -84,14 +134,14 @@ func NewSporkStore(url string, maxQueryBlocks uint64, queryBatchSize uint64) *Sp
 
 func (ss *SporkStore) String() string {
 	// with basic information with sporkList
-	return fmt.Sprintf("SporkStore{url: %s, maxQueryBlocks: %d, queryBatchSize: %d, sporkList: %v}\n", ss.url, ss.maxQueryBlocks, ss.queryBatchSize, ss.SporkList)
+	return fmt.Sprintf("SporkStore{stage: %s, maxQueryBlocks: %d, queryBatchSize: %d, sporkList: %v}\n", ss.stage, ss.maxQueryBlocks, ss.queryBatchSize, ss.SporkList)
 }
 
 func (ss *SporkStore) SyncSpork() error {
 	ss.Lock()
 	defer ss.Unlock()
 	var err error = nil
-	ss.SporkList, err = ReadJSONFromUrl(ss.url)
+	ss.SporkList, err = ReadFlowNetworkConfigFromUrl(ss.stage)
 	log.Info("sync", ss.SporkList)
 	return err
 }
@@ -219,10 +269,10 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 
 // close connection
 func (ss *SporkStore) Close() error {
-    if ss.readClient != nil {
-        err := ss.readClient.Close()
-        log.Info("close read client")
-        return err
-    }
-    return nil
+	if ss.readClient != nil {
+		err := ss.readClient.Close()
+		log.Info("close read client")
+		return err
+	}
+	return nil
 }

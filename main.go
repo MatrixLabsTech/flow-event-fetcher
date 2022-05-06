@@ -89,7 +89,7 @@ func queryEventByBlockRange(c *gin.Context) {
 
 func main() {
 	port := flag.String("port", "8989", "port to listen on")
-	sporkUrl := flag.String("sporkUrl", "", "spork json url")
+	stage := flag.String("stage", "testnet", "network stage")
 	alchemyEndpoint := flag.String("alchemyEndpoint", "", "alchemy endpoint")
 	alchemyApiKey := flag.String("alchemyApiKey", "", "alchemy api key")
 	useAlchemy := flag.Bool("useAlchemy", true, "use alchemy")
@@ -108,11 +108,7 @@ func main() {
 		flowClient = spork.NewSporkAlchemy(*alchemyEndpoint, *alchemyApiKey, *maxQueryBlocks, *queryBatchSize)
 
 	} else {
-		// check sporkUrl not empty
-		if *sporkUrl == "" {
-			*sporkUrl = "https://raw.githubusercontent.com/MatrixLabsTech/flow-spork-info/main/spork.json"
-		}
-		flowClient = spork.NewSporkStore(*sporkUrl, *maxQueryBlocks, *queryBatchSize)
+		flowClient = spork.NewSporkStore(*stage, *maxQueryBlocks, *queryBatchSize)
 	}
 
 	// display formatted sporkStore configuration
