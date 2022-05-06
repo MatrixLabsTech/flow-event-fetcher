@@ -8,7 +8,7 @@ import (
 
 func TestSporkStoreInit(t *testing.T) {
 	store := NewSporkStore(
-		"miannet", 5000, 100)
+		"mainnet", 5000, 100)
 	require.NotNil(t, store, "store should not be nil")
 
 	err := store.checkReaderHealthy()
