@@ -208,11 +208,11 @@ func (ss *SporkStore) locateNode(index uint64) (int, error) {
 
 func (ss *SporkStore) newReadClient() error {
 	log.Info("new read client")
-	addr := ss.SporkList[len(ss.SporkList)-1].AccessNode
+	//addr := ss.SporkList[len(ss.SporkList)-1].AccessNode
+	addr := "access.mainnet.nodes.onflow.org:9000"
 	if ss.stage == "testnet" {
 		addr = "access.devnet.nodes.onflow.org:9000"
 	}
-	fmt.Println("addr:", addr)
 	flowClient, err := client.New(addr, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
 	if err != nil {
 		return err
