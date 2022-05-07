@@ -208,7 +208,12 @@ func (ss *SporkStore) locateNode(index uint64) (int, error) {
 
 func (ss *SporkStore) newReadClient() error {
 	log.Info("new read client")
-	flowClient, err := client.New(ss.SporkList[len(ss.SporkList)-1].AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
+	addr := ss.SporkList[len(ss.SporkList)-1].AccessNode
+	if ss.stage == "testnet" {
+		addr = "access.devnet.nodes.onflow.org:9000"
+	}
+	fmt.Println("addr:", addr)
+	flowClient, err := client.New(addr, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
 	if err != nil {
 		return err
 	}
@@ -274,7 +279,7 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 	return events, nil
 }
 
-// close connection
+// Close connection
 func (ss *SporkStore) Close() error {
 	if ss.readClient != nil {
 		err := ss.readClient.Close()
