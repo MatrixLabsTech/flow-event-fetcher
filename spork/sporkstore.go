@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"sync"
 
 	"github.com/onflow/flow-go-sdk/client"
@@ -34,9 +35,10 @@ import (
 var NetworkConfigURL = "https://raw.githubusercontent.com/onflow/flow/master/sporks.json"
 
 type Spork struct {
-	Name       string `json:"name"`
-	RootHeight uint64 `json:"rootHeight"`
-	AccessNode string `json:"accessNode"`
+	ID         float64 `json:"-"`
+	Name       string  `json:"name"`
+	RootHeight uint64  `json:"rootHeight"`
+	AccessNode string  `json:"accessNode"`
 }
 
 func ReadJSONFromUrl(url string) ([]Spork, error) {
@@ -62,6 +64,7 @@ type FlowNetworkConfig struct {
 }
 
 type StageNetworkConfig struct {
+	ID          float64     `json:"id"`
 	Name        string      `json:"name"`
 	RootHeight  json.Number `json:"rootHeight"`
 	AccessNodes []string    `json:"accessNodes"`
@@ -97,11 +100,15 @@ func ReadFlowNetworkConfigFromUrl(stage string) ([]Spork, error) {
 			accessNode = c.AccessNodes[0]
 		}
 		sporkList = append(sporkList, Spork{
+			ID:         c.ID,
 			Name:       c.Name,
 			RootHeight: uint64(rootHeight),
 			AccessNode: accessNode,
 		})
 	}
+	sort.Slice(sporkList, func(i, j int) bool {
+		return sporkList[i].ID < sporkList[j].ID
+	})
 	return sporkList, nil
 }
 
