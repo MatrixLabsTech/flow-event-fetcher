@@ -99,6 +99,9 @@ func ReadFlowNetworkConfigFromUrl(stage string) ([]Spork, error) {
 		if len(c.AccessNodes) > 0 {
 			accessNode = c.AccessNodes[0]
 		}
+		if stage == "testnet" && accessNode == "" {
+			accessNode = "access.devnet.nodes.onflow.org:9000"
+		}
 		sporkList = append(sporkList, Spork{
 			ID:         c.ID,
 			Name:       c.Name,
