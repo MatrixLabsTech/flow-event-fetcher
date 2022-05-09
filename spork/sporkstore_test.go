@@ -30,9 +30,9 @@ func TestE2EFlowTransferEventFetchingCrossSpork(t *testing.T) {
 
 	testEventSignature := "A.1654653399040a61.FlowToken.TokensDeposited"
 
-	testEventStartBlock := 21291000
+	testEventStartBlock := 29405900
 
-	testEventEndBlock := 21291000 + 2000
+	testEventEndBlock := 29405900 + 2000
 
 	t.Log("TestE2EFlowTransferEventFetching: fetching events")
 	eventsFromBatch200, err := storeBatch200.QueryEventByBlockRange(testEventSignature, uint64(testEventStartBlock), uint64(testEventEndBlock))
@@ -65,9 +65,9 @@ func TestE2EFlowTransferEventFetchingBatchConsistence(t *testing.T) {
 
 	testEventSignature := "A.1654653399040a61.FlowToken.TokensDeposited"
 
-	testEventStartBlock := 21291000
+	testEventStartBlock := 29405900
 
-	testEventEndBlock := 21291000 + 20
+	testEventEndBlock := 29405900 + 20
 
 	t.Log("TestE2EFlowTransferEventFetching: fetching events")
 
