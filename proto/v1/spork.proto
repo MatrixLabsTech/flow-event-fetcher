@@ -3,6 +3,11 @@ syntax = "proto3";
 package proto.v1;
 
 option go_package = "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1";
+option java_multiple_files = true;
+option java_package = "proto.v1";
+option java_outer_classname = "SporkProto";
+
+import "google/protobuf/timestamp.proto";
 
 service Spork {
   rpc Version (VersionRequest) returns (VersionResponse) {}
@@ -40,7 +45,9 @@ message QueryEventByBlockRangeResponseEvent {
     int64 index = 3;
     string type = 4;
     string transactionId = 5;
-    repeated QueryEventByBlockRangeResponseValue values = 6;
+    int64 transactionIndex = 6;
+    google.protobuf.Timestamp timestamp = 7;
+    repeated QueryEventByBlockRangeResponseValue values = 8;
 }
 
 message QueryEventByBlockRangeResponseValue {

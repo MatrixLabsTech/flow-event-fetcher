@@ -19,6 +19,7 @@ package spork
 
 import (
 	"context"
+	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"github.com/onflow/cadence"
 	"github.com/onflow/flow-go-sdk/client"
@@ -100,12 +101,14 @@ func BlockEventsToJSON(e []client.BlockEvents) []*pb.QueryEventByBlockRangeRespo
 		if len(blockEvent.Events) > 0 {
 			for _, event := range blockEvent.Events {
 				result = append(result, &pb.QueryEventByBlockRangeResponseEvent{
-					BlockId:       blockEvent.Height,
-					Index:         int64(event.EventIndex),
-					Type:          event.Type,
-					EventID:       event.ID(),
-					TransactionId: event.TransactionID.String(),
-					Values:        EventToJSON(&(event.Value)),
+					BlockId:          blockEvent.Height,
+					Index:            int64(event.EventIndex),
+					Type:             event.Type,
+					EventID:          event.ID(),
+					Timestamp:        &timestamp.Timestamp{Seconds: blockEvent.BlockTimestamp.Unix()},
+					TransactionId:    event.TransactionID.String(),
+					TransactionIndex: int64(event.TransactionIndex),
+					Values:           EventToJSON(&(event.Value)),
 				})
 			}
 		}
