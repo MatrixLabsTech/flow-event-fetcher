@@ -32,12 +32,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-var NetworkConfigURL = "https://raw.githubusercontent.com/onflow/flow/master/sporks.json"
-
-var Endpoints = map[string]string{
-	"mainnet": "access.mainnet.nodes.onflow.org:9000",
-	"testnet": "access.devnet.nodes.onflow.org:9000",
-}
+var (
+	NetworkConfigURL = "https://raw.githubusercontent.com/onflow/flow/master/sporks.json"
+	TestnetEndpoints = "access.devnet.nodes.onflow.org:9000"
+)
 
 type Spork struct {
 	ID         float64 `json:"-"`
@@ -105,7 +103,7 @@ func ReadFlowNetworkConfigFromUrl(stage string) ([]Spork, error) {
 			accessNode = c.AccessNodes[0]
 		}
 		if stage == "testnet" && accessNode == "" {
-			accessNode = Endpoints[stage]
+			accessNode = TestnetEndpoints
 		}
 		sporkList = append(sporkList, Spork{
 			ID:         c.ID,
@@ -127,8 +125,6 @@ type SporkStore struct {
 
 	stage string
 
-	endpoint string
-
 	readClient *client.Client
 
 	maxQueryBlocks uint64
@@ -137,7 +133,7 @@ type SporkStore struct {
 }
 
 func NewSporkStore(stage string, maxQueryBlocks uint64, queryBatchSize uint64) *SporkStore {
-	ss := &SporkStore{stage: stage, endpoint: Endpoints[stage], maxQueryBlocks: maxQueryBlocks, queryBatchSize: queryBatchSize}
+	ss := &SporkStore{stage: stage, maxQueryBlocks: maxQueryBlocks, queryBatchSize: queryBatchSize}
 	err := ss.SyncSpork()
 	if err != nil {
 		panic(err)
@@ -152,7 +148,7 @@ func NewSporkStore(stage string, maxQueryBlocks uint64, queryBatchSize uint64) *
 
 func (ss *SporkStore) String() string {
 	// with basic information with sporkList
-	return fmt.Sprintf("SporkStore{endpoint: %s, maxQueryBlocks: %d, queryBatchSize: %d, sporkList: %v}\n", ss.endpoint, ss.maxQueryBlocks, ss.queryBatchSize, ss.SporkList)
+	return fmt.Sprintf("SporkStore{stage: %s, maxQueryBlocks: %d, queryBatchSize: %d, sporkList: %v}\n", ss.stage, ss.maxQueryBlocks, ss.queryBatchSize, ss.SporkList)
 }
 
 func (ss *SporkStore) SyncSpork() error {
@@ -194,8 +190,7 @@ func (ss *SporkStore) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAc
 func (ss *SporkStore) locateNode(index uint64) (int, error) {
 	left := 0
 	right := len(ss.SporkList) - 1
-	var mid int = 0
-	var ret int = 0
+	var mid, ret int
 	for left < right-1 {
 		mid = (left + (right-left)/2)
 		if ss.SporkList[mid].RootHeight > index {
@@ -219,8 +214,7 @@ func (ss *SporkStore) locateNode(index uint64) (int, error) {
 
 func (ss *SporkStore) newReadClient() error {
 	log.Info("new read client")
-	//addr := ss.SporkList[len(ss.SporkList)-1].AccessNode
-	flowClient, err := client.New(ss.endpoint, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
+	flowClient, err := client.New(ss.SporkList[len(ss.SporkList)-1].AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
 	if err != nil {
 		return err
 	}
@@ -265,7 +259,7 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 	}
 
 	for _, node := range resolvedAccessNodeList {
-		flowClient, err := client.New(ss.endpoint, grpc.WithInsecure(), grpc.WithMaxMsgSize(140e6))
+		flowClient, err := client.New(node.AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(140e6))
 		defer flowClient.Close()
 		defer log.Info("close client from:", node.AccessNode)
 
