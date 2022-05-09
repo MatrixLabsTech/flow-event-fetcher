@@ -16,3 +16,9 @@
 
 flow-event-fetcher-service
 restapi
+
+### idea ###
+.idea
+
+### vscode ###
+.vscode

@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package spork
 
 import (
@@ -23,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"sync"
 
 	"github.com/onflow/flow-go-sdk/client"
@@ -30,10 +32,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+var NetworkConfigURL = "https://raw.githubusercontent.com/onflow/flow/master/sporks.json"
+
 type Spork struct {
-	Name       string `json:"name"`
-	RootHeight uint64 `json:"rootHeight"`
-	AccessNode string `json:"accessNode"`
+	ID         float64 `json:"-"`
+	Name       string  `json:"name"`
+	RootHeight uint64  `json:"rootHeight"`
+	AccessNode string  `json:"accessNode"`
 }
 
 func ReadJSONFromUrl(url string) ([]Spork, error) {
@@ -54,12 +59,67 @@ func ReadJSONFromUrl(url string) ([]Spork, error) {
 	return sporkList, nil
 }
 
+type FlowNetworkConfig struct {
+	Networks map[string]map[string]StageNetworkConfig `json:"networks"`
+}
+
+type StageNetworkConfig struct {
+	ID          float64     `json:"id"`
+	Name        string      `json:"name"`
+	RootHeight  json.Number `json:"rootHeight"`
+	AccessNodes []string    `json:"accessNodes"`
+}
+
+// ReadFlowNetworkConfigFromUrl reads the flow network config from the given url.
+func ReadFlowNetworkConfigFromUrl(stage string) ([]Spork, error) {
+	resp, err := http.Get(NetworkConfigURL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	networks := FlowNetworkConfig{}
+	err = json.NewDecoder(resp.Body).Decode(&networks)
+	if err != nil {
+		return nil, err
+	}
+	if networks.Networks == nil {
+		return nil, errors.New("no networks found")
+	}
+	cfg, ok := networks.Networks[stage]
+	if !ok {
+		return nil, fmt.Errorf("no network found for stage %s", stage)
+	}
+	sporkList := make([]Spork, 0, len(cfg))
+	for _, c := range cfg {
+		rootHeight, err := c.RootHeight.Int64()
+		if err != nil {
+			return nil, err
+		}
+		var accessNode string
+		if len(c.AccessNodes) > 0 {
+			accessNode = c.AccessNodes[0]
+		}
+		if stage == "testnet" && accessNode == "" {
+			accessNode = "access.devnet.nodes.onflow.org:9000"
+		}
+		sporkList = append(sporkList, Spork{
+			ID:         c.ID,
+			Name:       c.Name,
+			RootHeight: uint64(rootHeight),
+			AccessNode: accessNode,
+		})
+	}
+	sort.Slice(sporkList, func(i, j int) bool {
+		return sporkList[i].ID < sporkList[j].ID
+	})
+	return sporkList, nil
+}
+
 type SporkStore struct {
 	sync.Mutex
 
 	SporkList []Spork
-
-	url string
+	stage     string
 
 	readClient *client.Client
 
@@ -68,8 +128,8 @@ type SporkStore struct {
 	queryBatchSize uint64
 }
 
-func NewSporkStore(url string, maxQueryBlocks uint64, queryBatchSize uint64) *SporkStore {
-	ss := &SporkStore{url: url, maxQueryBlocks: maxQueryBlocks, queryBatchSize: queryBatchSize}
+func NewSporkStore(stage string, maxQueryBlocks uint64, queryBatchSize uint64) *SporkStore {
+	ss := &SporkStore{stage: stage, maxQueryBlocks: maxQueryBlocks, queryBatchSize: queryBatchSize}
 	err := ss.SyncSpork()
 	if err != nil {
 		panic(err)
@@ -84,14 +144,14 @@ func NewSporkStore(url string, maxQueryBlocks uint64, queryBatchSize uint64) *Sp
 
 func (ss *SporkStore) String() string {
 	// with basic information with sporkList
-	return fmt.Sprintf("SporkStore{url: %s, maxQueryBlocks: %d, queryBatchSize: %d, sporkList: %v}\n", ss.url, ss.maxQueryBlocks, ss.queryBatchSize, ss.SporkList)
+	return fmt.Sprintf("SporkStore{stage: %s, maxQueryBlocks: %d, queryBatchSize: %d, sporkList: %v}\n", ss.stage, ss.maxQueryBlocks, ss.queryBatchSize, ss.SporkList)
 }
 
 func (ss *SporkStore) SyncSpork() error {
 	ss.Lock()
 	defer ss.Unlock()
 	var err error = nil
-	ss.SporkList, err = ReadJSONFromUrl(ss.url)
+	ss.SporkList, err = ReadFlowNetworkConfigFromUrl(ss.stage)
 	log.Info("sync", ss.SporkList)
 	return err
 }
@@ -151,7 +211,12 @@ func (ss *SporkStore) locateNode(index uint64) (int, error) {
 
 func (ss *SporkStore) newReadClient() error {
 	log.Info("new read client")
-	flowClient, err := client.New(ss.SporkList[len(ss.SporkList)-1].AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
+	//addr := ss.SporkList[len(ss.SporkList)-1].AccessNode
+	addr := "access.mainnet.nodes.onflow.org:9000"
+	if ss.stage == "testnet" {
+		addr = "access.devnet.nodes.onflow.org:9000"
+	}
+	flowClient, err := client.New(addr, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
 	if err != nil {
 		return err
 	}
@@ -217,12 +282,12 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 	return events, nil
 }
 
-// close connection
+// Close connection
 func (ss *SporkStore) Close() error {
-    if ss.readClient != nil {
-        err := ss.readClient.Close()
-        log.Info("close read client")
-        return err
-    }
-    return nil
+	if ss.readClient != nil {
+		err := ss.readClient.Close()
+		log.Info("close read client")
+		return err
+	}
+	return nil
 }

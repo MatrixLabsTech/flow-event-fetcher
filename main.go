@@ -17,67 +17,113 @@
 
 package main
 
+//go:generate swag init
+
 import (
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 
-	"github.com/MatrixLabsTech/flow-event-fetcher/spork"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
+
+	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
+	"github.com/MatrixLabsTech/flow-event-fetcher/spork"
 )
-
-type QueryEventByBlockRangeDto struct {
-	Event string `json:"event"`
-	Start int    `json:"start"`
-	End   int    `json:"end"`
-}
-
-var url = ""
 
 var flowClient spork.FlowClient
 
 var backendMode = "alchemy"
 
-func version(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"version": "1.0.0", "backendMode": backendMode})
+type ResponseError struct {
+	Error string `json:"error"`
 }
 
+// Version get version
+// @Summary get version
+// @Description get version
+// @Tags flow-event-fetcher
+// @Accept  application/json
+// @Product application/json
+// @Success 200 {object} pb.VersionResponse
+// @Router /version [get]
+func version(c *gin.Context) {
+	c.JSON(http.StatusOK, pb.VersionResponse{
+		Version:     "1.0.0",
+		BackendMode: backendMode,
+	})
+}
+
+// SyncSpork sync spork
+// @Summary sync spork
+// @Description sync spork
+// @Tags flow-event-fetcher
+// @Accept  application/json
+// @Product application/json
+// @Success 200 {object} pb.QueryLatestBlockHeightResponse
+// @Failure 500 {object} ResponseError
+// @Router /syncSpork [get]
 func syncSpork(c *gin.Context) {
 	err := flowClient.SyncSpork()
 	if err != nil {
 		log.Error(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ResponseError{Error: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"spork": flowClient.String()})
+	c.JSON(http.StatusOK, pb.SyncSporkResponse{Spork: flowClient.String()})
 }
 
+// queryLatestBlockHeight query the latest block height
+// @Summary queries the latest block height
+// @Description queries the latest block height
+// @Tags flow-event-fetcher
+// @Accept  application/json
+// @Product application/json
+// @Success 200 {object} pb.QueryLatestBlockHeightResponse
+// @Failure 500 {object} ResponseError
+// @Router /queryLatestBlockHeight [get]
 func queryLatestBlockHeight(c *gin.Context) {
 	height, err := flowClient.QueryLatestBlockHeight()
 	if err != nil {
 		log.Error(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ResponseError{Error: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"latestBlockHeight": height})
+	c.JSON(http.StatusOK, pb.QueryLatestBlockHeightResponse{LatestBlockHeight: height})
 }
 
+// queryEventByBlockRange query event by block range
+// @Summary queries event by block range
+// @Description queries event by block range
+// @Tags flow-event-fetcher
+// @Accept  application/json
+// @Product application/json
+// @Param data body pb.QueryEventByBlockRangeRequest true "data"
+// @Success 200 {object} []pb.QueryEventByBlockRangeResponseEvent
+// @Failure 500 {object} ResponseError
+// @Router /queryEventByBlockRange [post]
 func queryEventByBlockRange(c *gin.Context) {
-	var queryEventByBlockRangeDto QueryEventByBlockRangeDto
+	//var queryEventByBlockRangeDto QueryEventByBlockRangeDto
+	var queryEventByBlockRangeDto pb.QueryEventByBlockRangeRequest
 	err := c.Bind(&queryEventByBlockRangeDto)
 	if err != nil {
 		log.Error(err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ResponseError{Error: err.Error()})
 		return
 	}
-	log.Info(fmt.Sprintf("query %s, from %d to %d", queryEventByBlockRangeDto.Event, queryEventByBlockRangeDto.Start, queryEventByBlockRangeDto.End))
+	log.Info(fmt.Sprintf("query %s, from %d to %d",
+		queryEventByBlockRangeDto.Event,
+		queryEventByBlockRangeDto.Start,
+		queryEventByBlockRangeDto.End))
 
-	ret, err := flowClient.QueryEventByBlockRange(queryEventByBlockRangeDto.Event, uint64(queryEventByBlockRangeDto.Start), uint64(queryEventByBlockRangeDto.End))
+	ret, err := flowClient.QueryEventByBlockRange(
+		queryEventByBlockRangeDto.Event,
+		queryEventByBlockRangeDto.Start,
+		queryEventByBlockRangeDto.End)
 	if err != nil {
 		log.Error(err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ResponseError{Error: err.Error()})
 		return
 	}
 
@@ -87,9 +133,14 @@ func queryEventByBlockRange(c *gin.Context) {
 
 }
 
+// @title flow-event-fetcher API
+// @version 1.0.1
+// @description flow-event-fetcher interface documentation
+// @host localhost:8989
+// @BasePath
 func main() {
 	port := flag.String("port", "8989", "port to listen on")
-	sporkUrl := flag.String("sporkUrl", "", "spork json url")
+	stage := flag.String("stage", "testnet", "network stage")
 	alchemyEndpoint := flag.String("alchemyEndpoint", "", "alchemy endpoint")
 	alchemyApiKey := flag.String("alchemyApiKey", "", "alchemy api key")
 	useAlchemy := flag.Bool("useAlchemy", true, "use alchemy")
@@ -108,11 +159,7 @@ func main() {
 		flowClient = spork.NewSporkAlchemy(*alchemyEndpoint, *alchemyApiKey, *maxQueryBlocks, *queryBatchSize)
 
 	} else {
-		// check sporkUrl not empty
-		if *sporkUrl == "" {
-			*sporkUrl = "https://raw.githubusercontent.com/MatrixLabsTech/flow-spork-info/main/spork.json"
-		}
-		flowClient = spork.NewSporkStore(*sporkUrl, *maxQueryBlocks, *queryBatchSize)
+		flowClient = spork.NewSporkStore(*stage, *maxQueryBlocks, *queryBatchSize)
 	}
 
 	// display formatted sporkStore configuration

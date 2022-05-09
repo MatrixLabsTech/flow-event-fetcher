@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package proto.v1;
+
+option go_package = "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1";
+
+service Spork {
+  rpc Version (VersionRequest) returns (VersionResponse) {}
+  rpc SyncSpork(SyncSporkRequest) returns (SyncSporkResponse) {}
+  rpc QueryEventByBlockRange(QueryEventByBlockRangeRequest) returns (QueryEventByBlockRangeResponse) {}
+  rpc QueryLatestBlockHeight(QueryLatestBlockHeightRequest) returns (QueryLatestBlockHeightResponse) {}
+}
+
+message VersionRequest {}
+
+message VersionResponse {
+  string version = 1;
+  string backendMode = 2;
+}
+
+message SyncSporkRequest {}
+
+message SyncSporkResponse {
+  string spork = 1;
+}
+
+message QueryEventByBlockRangeRequest {
+  string event = 1;
+  uint64 start = 2;
+  uint64 end = 3;
+}
+
+message QueryEventByBlockRangeResponse {
+  repeated QueryEventByBlockRangeResponseEvent events = 1;
+}
+
+message QueryEventByBlockRangeResponseEvent {
+    uint64 blockId = 1;
+    string eventID = 2;
+    int64 index = 3;
+    string type = 4;
+    string transactionId = 5;
+    repeated QueryEventByBlockRangeResponseValue values = 6;
+}
+
+message QueryEventByBlockRangeResponseValue {
+    string name = 1;
+    string value = 2;
+}
+
+message QueryLatestBlockHeightRequest {}
+
+message QueryLatestBlockHeightResponse {
+  uint64 latestBlockHeight = 1;
+}

@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package spork
 
 import (
@@ -22,6 +23,8 @@ import (
 	"github.com/onflow/cadence"
 	"github.com/onflow/flow-go-sdk/client"
 	log "github.com/sirupsen/logrus"
+
+	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 )
 
 type FlowClient interface {
@@ -29,7 +32,7 @@ type FlowClient interface {
 	QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error)
 	QueryLatestBlockHeight() (uint64, error)
 	SyncSpork() error
-    Close() error
+	Close() error
 }
 
 type ResolvedAccessNodeList struct {
@@ -76,33 +79,34 @@ func (e *EventResult) JSON() interface{} {
 	return result
 }
 
-func EventToJSON(e *cadence.Event) []map[string]interface{} {
-	preparedFields := make([]map[string]interface{}, 0)
+func EventToJSON(e *cadence.Event) []*pb.QueryEventByBlockRangeResponseValue {
+	preparedFields := make([]*pb.QueryEventByBlockRangeResponseValue, 0)
 	for i, field := range e.EventType.Fields {
 		value := e.Fields[i]
 		preparedFields = append(preparedFields,
-			map[string]interface{}{
-				"name":  field.Identifier,
-				"value": value.String(),
+			&pb.QueryEventByBlockRangeResponseValue{
+				Name:  field.Identifier,
+				Value: value.String(),
 			},
 		)
 	}
 	return preparedFields
 }
 
-func BlockEventsToJSON(e []client.BlockEvents) []map[string]interface{} {
-	result := make([]map[string]interface{}, 0)
+func BlockEventsToJSON(e []client.BlockEvents) []*pb.QueryEventByBlockRangeResponseEvent {
+	result := make([]*pb.QueryEventByBlockRangeResponseEvent, 0)
 
 	for _, blockEvent := range e {
 		if len(blockEvent.Events) > 0 {
 			for _, event := range blockEvent.Events {
-				result = append(result, map[string]interface{}{
-					"blockId":       blockEvent.Height,
-					"index":         event.EventIndex,
-					"type":          event.Type,
-					"eventId":       event.ID(),
-					"transactionId": event.TransactionID.String(),
-					"values":        eventToJSON(&(event.Value))})
+				result = append(result, &pb.QueryEventByBlockRangeResponseEvent{
+					BlockId:       blockEvent.Height,
+					Index:         int64(event.EventIndex),
+					Type:          event.Type,
+					EventID:       event.ID(),
+					TransactionId: event.TransactionID.String(),
+					Values:        EventToJSON(&(event.Value)),
+				})
 			}
 		}
 	}
