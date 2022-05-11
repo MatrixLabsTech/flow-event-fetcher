@@ -5,3 +5,7 @@ build-service:
 .PHONY: proto-gen
 proto-gen:
 	protoc --go_out=plugins=grpc:. proto/v1/*.proto --go_opt=paths=source_relative
+
+.PHONY: swagger-gen
+swagger-gen:
+	swag init  --parseDependency --parseDepth=2 --parseVendor

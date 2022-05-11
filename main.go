@@ -17,7 +17,7 @@
 
 package main
 
-//go:generate swag init
+//go:generate swag init  --parseDependency --parseDepth=2 --parseVendor
 
 import (
 	"flag"
@@ -26,8 +26,12 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/golang/protobuf/ptypes/timestamp"
 	log "github.com/sirupsen/logrus"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
 
+	_ "github.com/MatrixLabsTech/flow-event-fetcher/docs"
 	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 	"github.com/MatrixLabsTech/flow-event-fetcher/spork"
 )
@@ -168,6 +172,7 @@ func main() {
 
 	router.Use(gin.LoggerWithWriter(os.Stderr))
 
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/version", version)
 	router.GET("/syncSpork", syncSpork)
 	router.POST("/queryEventByBlockRange", queryEventByBlockRange)

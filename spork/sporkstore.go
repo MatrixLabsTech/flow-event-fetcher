@@ -32,7 +32,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-var NetworkConfigURL = "https://raw.githubusercontent.com/onflow/flow/master/sporks.json"
+var (
+	NetworkConfigURL = "https://raw.githubusercontent.com/onflow/flow/master/sporks.json"
+	TestnetEndpoints = "access.devnet.nodes.onflow.org:9000"
+)
 
 type Spork struct {
 	ID         float64 `json:"-"`
@@ -100,7 +103,7 @@ func ReadFlowNetworkConfigFromUrl(stage string) ([]Spork, error) {
 			accessNode = c.AccessNodes[0]
 		}
 		if stage == "testnet" && accessNode == "" {
-			accessNode = "access.devnet.nodes.onflow.org:9000"
+			accessNode = TestnetEndpoints
 		}
 		sporkList = append(sporkList, Spork{
 			ID:         c.ID,
@@ -119,7 +122,8 @@ type SporkStore struct {
 	sync.Mutex
 
 	SporkList []Spork
-	stage     string
+
+	stage string
 
 	readClient *client.Client
 
@@ -186,8 +190,7 @@ func (ss *SporkStore) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAc
 func (ss *SporkStore) locateNode(index uint64) (int, error) {
 	left := 0
 	right := len(ss.SporkList) - 1
-	var mid int = 0
-	var ret int = 0
+	var mid, ret int
 	for left < right-1 {
 		mid = (left + (right-left)/2)
 		if ss.SporkList[mid].RootHeight > index {
@@ -211,12 +214,7 @@ func (ss *SporkStore) locateNode(index uint64) (int, error) {
 
 func (ss *SporkStore) newReadClient() error {
 	log.Info("new read client")
-	//addr := ss.SporkList[len(ss.SporkList)-1].AccessNode
-	addr := "access.mainnet.nodes.onflow.org:9000"
-	if ss.stage == "testnet" {
-		addr = "access.devnet.nodes.onflow.org:9000"
-	}
-	flowClient, err := client.New(addr, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
+	flowClient, err := client.New(ss.SporkList[len(ss.SporkList)-1].AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
 	if err != nil {
 		return err
 	}
@@ -261,8 +259,6 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 	}
 
 	for _, node := range resolvedAccessNodeList {
-		fmt.Println(node)
-
 		flowClient, err := client.New(node.AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(140e6))
 		defer flowClient.Close()
 		defer log.Info("close client from:", node.AccessNode)
