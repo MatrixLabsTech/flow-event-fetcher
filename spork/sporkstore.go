@@ -27,6 +27,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/onflow/flow-go-sdk"
 	"github.com/onflow/flow-go-sdk/client"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -118,12 +119,15 @@ func ReadFlowNetworkConfigFromUrl(stage string) ([]Spork, error) {
 	return sporkList, nil
 }
 
-type SporkStore struct {
+type Store struct {
 	sync.Mutex
 
 	SporkList []Spork
 
 	stage string
+
+	// client set in NewSporkStore
+	clients sync.Map
 
 	readClient *client.Client
 
@@ -132,8 +136,8 @@ type SporkStore struct {
 	queryBatchSize uint64
 }
 
-func NewSporkStore(stage string, maxQueryBlocks uint64, queryBatchSize uint64) *SporkStore {
-	ss := &SporkStore{stage: stage, maxQueryBlocks: maxQueryBlocks, queryBatchSize: queryBatchSize}
+func NewSporkStore(stage string, maxQueryBlocks uint64, queryBatchSize uint64) *Store {
+	ss := &Store{stage: stage, maxQueryBlocks: maxQueryBlocks, queryBatchSize: queryBatchSize}
 	err := ss.SyncSpork()
 	if err != nil {
 		panic(err)
@@ -146,12 +150,40 @@ func NewSporkStore(stage string, maxQueryBlocks uint64, queryBatchSize uint64) *
 	return ss
 }
 
-func (ss *SporkStore) String() string {
+func (ss *Store) String() string {
 	// with basic information with sporkList
 	return fmt.Sprintf("SporkStore{stage: %s, maxQueryBlocks: %d, queryBatchSize: %d, sporkList: %v}\n", ss.stage, ss.maxQueryBlocks, ss.queryBatchSize, ss.SporkList)
 }
 
-func (ss *SporkStore) SyncSpork() error {
+func (ss *Store) setClient(r *ResolvedAccessNodeList) (*client.Client, error) {
+	c, err := ss.newClient(r.AccessNode)
+	if err != nil {
+		return nil, err
+	}
+	ss.clients.Store(r.Index, c)
+	return c, nil
+}
+
+func (ss *Store) getClient(r *ResolvedAccessNodeList) (*client.Client, error) {
+	v, ok := ss.clients.Load(r.Index)
+	if !ok {
+		return ss.setClient(r)
+	}
+	c := v.(*client.Client)
+	ctx := context.Background()
+	log.Info("Start to ping")
+
+	if err := c.Ping(ctx); err != nil {
+		return ss.setClient(r)
+	}
+	return c, nil
+}
+
+func (ss *Store) newClient(endpoint string) (*client.Client, error) {
+	return client.New(endpoint, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
+}
+
+func (ss *Store) SyncSpork() error {
 	ss.Lock()
 	defer ss.Unlock()
 	var err error = nil
@@ -160,7 +192,7 @@ func (ss *SporkStore) SyncSpork() error {
 	return err
 }
 
-func (ss *SporkStore) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAccessNodeList, error) {
+func (ss *Store) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAccessNodeList, error) {
 	if end-start > ss.maxQueryBlocks {
 		return nil, errors.New("total blocks is greater than maxQueryBlocks")
 	}
@@ -178,21 +210,34 @@ func (ss *SporkStore) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAc
 	}
 
 	if startNodeIdx == endNodeIdx {
-		result = append(result, ResolvedAccessNodeList{Start: start, End: end, AccessNode: ss.SporkList[startNodeIdx].AccessNode})
+		result = append(result, ResolvedAccessNodeList{
+			Index:      startNodeIdx,
+			Start:      start,
+			End:        end,
+			AccessNode: ss.SporkList[startNodeIdx].AccessNode})
 	} else {
-		result = append(result, ResolvedAccessNodeList{Start: start, End: ss.SporkList[endNodeIdx].RootHeight - 1, AccessNode: ss.SporkList[startNodeIdx].AccessNode})
-		result = append(result, ResolvedAccessNodeList{Start: ss.SporkList[endNodeIdx].RootHeight, End: end, AccessNode: ss.SporkList[endNodeIdx].AccessNode})
+		result = append(result,
+			ResolvedAccessNodeList{
+				Index:      startNodeIdx,
+				Start:      start,
+				End:        ss.SporkList[endNodeIdx].RootHeight - 1,
+				AccessNode: ss.SporkList[startNodeIdx].AccessNode},
+			ResolvedAccessNodeList{
+				Index:      endNodeIdx,
+				Start:      ss.SporkList[endNodeIdx].RootHeight,
+				End:        end,
+				AccessNode: ss.SporkList[endNodeIdx].AccessNode})
 	}
 
 	return result, nil
 }
 
-func (ss *SporkStore) locateNode(index uint64) (int, error) {
+func (ss *Store) locateNode(index uint64) (int, error) {
 	left := 0
 	right := len(ss.SporkList) - 1
 	var mid, ret int
 	for left < right-1 {
-		mid = (left + (right-left)/2)
+		mid = left + (right-left)/2
 		if ss.SporkList[mid].RootHeight > index {
 			right = mid
 		} else {
@@ -212,17 +257,24 @@ func (ss *SporkStore) locateNode(index uint64) (int, error) {
 	return ret, nil
 }
 
-func (ss *SporkStore) newReadClient() error {
+func (ss *Store) newReadClient() error {
 	log.Info("new read client")
-	flowClient, err := client.New(ss.SporkList[len(ss.SporkList)-1].AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
+	flowClient, err := ss.newClient(ss.SporkList[len(ss.SporkList)-1].AccessNode)
 	if err != nil {
 		return err
 	}
 	ss.readClient = flowClient
+	for i := range ss.SporkList {
+		c, err := ss.newClient(ss.SporkList[i].AccessNode)
+		if err != nil {
+			return err
+		}
+		ss.clients.Store(i, c)
+	}
 	return nil
 }
 
-func (ss *SporkStore) checkReaderHealthy() error {
+func (ss *Store) checkReaderHealthy() error {
 	ctx := context.Background()
 	log.Info("Start to ping")
 
@@ -236,7 +288,7 @@ func (ss *SporkStore) checkReaderHealthy() error {
 	return nil
 }
 
-func (ss *SporkStore) QueryLatestBlockHeight() (uint64, error) {
+func (ss *Store) QueryLatestBlockHeight() (uint64, error) {
 	ss.Lock()
 	defer ss.Unlock()
 	ss.checkReaderHealthy()
@@ -248,26 +300,24 @@ func (ss *SporkStore) QueryLatestBlockHeight() (uint64, error) {
 	return header.Height, err
 }
 
-func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error) {
+func (ss *Store) QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error) {
 	ctx := context.Background()
 
 	events := make([]client.BlockEvents, 0)
 
-	resolvedAccessNodeList, err := ss.resolveAccessNodes(uint64(start), uint64(end))
+	resolvedAccessNodeList, err := ss.resolveAccessNodes(start, end)
 	if err != nil {
 		return nil, err
 	}
 
+	tmpQueryBatchSize := ss.queryBatchSize
 	for _, node := range resolvedAccessNodeList {
-		flowClient, err := client.New(node.AccessNode, grpc.WithInsecure(), grpc.WithMaxMsgSize(140e6))
-		defer flowClient.Close()
-		defer log.Info("close client from:", node.AccessNode)
+		flowClient, err := ss.getClient(&node)
 
 		if err != nil {
 			return nil, err
 		}
 
-		tmpQueryBatchSize := ss.queryBatchSize
 		ret, err := IterQueryEventByBlockRange(ctx, flowClient, event, node.Start, node.End, tmpQueryBatchSize)
 		if err != nil {
 			return nil, err
@@ -279,11 +329,146 @@ func (ss *SporkStore) QueryEventByBlockRange(event string, start uint64, end uin
 }
 
 // Close connection
-func (ss *SporkStore) Close() error {
+func (ss *Store) Close() error {
 	if ss.readClient != nil {
 		err := ss.readClient.Close()
 		log.Info("close read client")
 		return err
 	}
 	return nil
+}
+
+func (ss *Store) QueryAllEventByBlockRange(ctx context.Context, start, end uint64) ([]client.BlockEvents, error) {
+	events := make([]client.BlockEvents, 0)
+
+	resolvedAccessNodeList, err := ss.resolveAccessNodes(start, end)
+	if err != nil {
+		return nil, err
+	}
+	blockEventsChan := make(chan client.BlockEvents, end-start+1)
+	errChan := make(chan error, end-start+1)
+	var wg sync.WaitGroup
+	wg.Add(int(end - start + 1))
+	for i := range resolvedAccessNodeList {
+		flowClient, err := ss.getClient(&resolvedAccessNodeList[i])
+		if err != nil {
+			return nil, err
+		}
+		for height := resolvedAccessNodeList[i].Start; height <= resolvedAccessNodeList[i].End; height++ {
+			go ss.getEventByBlockHeight(&wg, ctx, flowClient, height, blockEventsChan, errChan)
+		}
+	}
+	wg.Wait()
+	close(blockEventsChan)
+	close(errChan)
+
+	if len(errChan) > 0 {
+		return nil, <-errChan
+	}
+	for e := range blockEventsChan {
+		events = append(events, e)
+	}
+
+	sort.Slice(events, func(i, j int) bool {
+		return events[i].Height < events[j].Height
+	})
+
+	return events, nil
+}
+
+func (ss *Store) getEventByBlockHeight(
+	wg *sync.WaitGroup,
+	ctx context.Context,
+	flowClient *client.Client,
+	height uint64,
+	blockEventChan chan client.BlockEvents,
+	errChan chan error) {
+
+	defer wg.Done()
+	block, err := flowClient.GetBlockByHeight(ctx, height)
+	if err != nil {
+		log.Errorf("get block by height error: %s", err.Error())
+		errChan <- err
+		return
+	}
+	event := client.BlockEvents{
+		BlockID:        block.ID,
+		Height:         block.Height,
+		BlockTimestamp: block.Timestamp,
+		Events:         make([]flow.Event, 0),
+	}
+	eventChan := make(chan []flow.Event, len(block.BlockPayload.CollectionGuarantees))
+	var wgCollection sync.WaitGroup
+	wgCollection.Add(len(block.BlockPayload.CollectionGuarantees))
+	for j := range block.BlockPayload.CollectionGuarantees {
+		go ss.getEventByCollectionID(&wgCollection,
+			ctx, flowClient,
+			block.BlockPayload.CollectionGuarantees[j].CollectionID,
+			eventChan, errChan)
+	}
+	wgCollection.Wait()
+	close(eventChan)
+	if len(errChan) > 0 {
+		return
+	}
+	for e := range eventChan {
+		event.Events = append(event.Events, e...)
+	}
+	sort.Slice(event.Events, func(i, j int) bool {
+		return event.Events[i].EventIndex < event.Events[j].EventIndex ||
+			event.Events[i].TransactionIndex < event.Events[j].TransactionIndex
+	})
+	blockEventChan <- event
+}
+
+func (ss *Store) getEventByCollectionID(
+	wg *sync.WaitGroup,
+	ctx context.Context,
+	flowClient *client.Client,
+	id flow.Identifier,
+	eventChan chan []flow.Event,
+	errChan chan error) {
+
+	defer wg.Done()
+	collection, err := flowClient.GetCollection(ctx, id)
+	if err != nil {
+		log.Errorf("get collection by id error: %s", err.Error())
+		errChan <- err
+		return
+	}
+
+	eventTransactionChan := make(chan []flow.Event, len(collection.TransactionIDs))
+
+	var wgTransaction sync.WaitGroup
+	wgTransaction.Add(len(collection.TransactionIDs))
+	for i := range collection.TransactionIDs {
+		go ss.getEventByTransactionID(&wgTransaction, ctx,
+			flowClient,
+			collection.TransactionIDs[i],
+			eventTransactionChan, errChan)
+	}
+	wgTransaction.Wait()
+	close(eventTransactionChan)
+	events := make([]flow.Event, 0)
+	for e := range eventTransactionChan {
+		events = append(events, e...)
+	}
+	eventChan <- events
+}
+
+func (ss *Store) getEventByTransactionID(wg *sync.WaitGroup,
+	ctx context.Context,
+	flowClient *client.Client,
+	id flow.Identifier,
+	eventChan chan []flow.Event,
+	errChan chan error) {
+
+	defer wg.Done()
+	transaction, err := flowClient.GetTransactionResult(ctx, id)
+	if err != nil {
+		log.Errorf("get transaction by id error: %s", err.Error())
+		errChan <- err
+		return
+	}
+	eventChan <- transaction.Events
 }

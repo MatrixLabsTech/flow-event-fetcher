@@ -104,7 +104,7 @@ func queryLatestBlockHeight(c *gin.Context) {
 // @Accept  application/json
 // @Product application/json
 // @Param data body pb.QueryEventByBlockRangeRequest true "data"
-// @Success 200 {object} []pb.QueryEventByBlockRangeResponseEvent
+// @Success 200 {object} []pb.BlockEventsResponseEvent
 // @Failure 500 {object} ResponseError
 // @Router /queryEventByBlockRange [post]
 func queryEventByBlockRange(c *gin.Context) {
@@ -134,7 +134,42 @@ func queryEventByBlockRange(c *gin.Context) {
 	jsonRet := spork.BlockEventsToJSON(ret)
 	log.Info(fmt.Sprintf("Got %d events", len(jsonRet)))
 	c.JSON(http.StatusOK, jsonRet)
+}
 
+// queryAllEventByBlockRange query all event by block range
+// @Summary queries all event by block range
+// @Description queries all event by block range
+// @Tags flow-event-fetcher
+// @Accept  application/json
+// @Product application/json
+// @Param data body pb.QueryAllEventByBlockRangeRequest true "data"
+// @Success 200 {object} []pb.BlockEventsResponseEvent
+// @Failure 500 {object} ResponseError
+// @Router /queryAllEventByBlockRange [post]
+func queryAllEventByBlockRange(c *gin.Context) {
+	var queryAllEventByBlockRangeDto pb.QueryAllEventByBlockRangeRequest
+	err := c.Bind(&queryAllEventByBlockRangeDto)
+	if err != nil {
+		log.Error(err.Error())
+		c.JSON(http.StatusBadRequest, ResponseError{Error: err.Error()})
+		return
+	}
+	log.Info(fmt.Sprintf("query all event, from %d to %d",
+		queryAllEventByBlockRangeDto.Start,
+		queryAllEventByBlockRangeDto.End))
+
+	ret, err := flowClient.QueryAllEventByBlockRange(c,
+		queryAllEventByBlockRangeDto.Start,
+		queryAllEventByBlockRangeDto.End)
+	if err != nil {
+		log.Error(err.Error())
+		c.JSON(http.StatusBadRequest, ResponseError{Error: err.Error()})
+		return
+	}
+
+	jsonRet := spork.BlockEventsToJSON(ret)
+	log.Info(fmt.Sprintf("Got %d events", len(jsonRet)))
+	c.JSON(http.StatusOK, jsonRet)
 }
 
 // @title flow-event-fetcher API
@@ -177,6 +212,7 @@ func main() {
 	router.GET("/syncSpork", syncSpork)
 	router.POST("/queryEventByBlockRange", queryEventByBlockRange)
 	router.GET("/queryLatestBlockHeight", queryLatestBlockHeight)
+	router.POST("/queryAllEventByBlockRange", queryAllEventByBlockRange)
 
 	log.Info("Starting server...")
 	router.Run(":" + *port)

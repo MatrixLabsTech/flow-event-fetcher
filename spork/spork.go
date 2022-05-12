@@ -19,8 +19,8 @@ package spork
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/timestamp"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/onflow/cadence"
 	"github.com/onflow/flow-go-sdk/client"
 	log "github.com/sirupsen/logrus"
@@ -29,14 +29,16 @@ import (
 )
 
 type FlowClient interface {
-	String() string
-	QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error)
-	QueryLatestBlockHeight() (uint64, error)
-	SyncSpork() error
 	Close() error
+	String() string
+	SyncSpork() error
+	QueryLatestBlockHeight() (uint64, error)
+	QueryEventByBlockRange(event string, start, end uint64) ([]client.BlockEvents, error)
+	QueryAllEventByBlockRange(ctx context.Context, start, end uint64) ([]client.BlockEvents, error)
 }
 
 type ResolvedAccessNodeList struct {
+	Index      int
 	Start      uint64
 	End        uint64
 	AccessNode string
@@ -80,12 +82,12 @@ func (e *EventResult) JSON() interface{} {
 	return result
 }
 
-func EventToJSON(e *cadence.Event) []*pb.QueryEventByBlockRangeResponseValue {
-	preparedFields := make([]*pb.QueryEventByBlockRangeResponseValue, 0)
+func EventToJSON(e *cadence.Event) []*pb.BlockEventsResponseValue {
+	preparedFields := make([]*pb.BlockEventsResponseValue, 0)
 	for i, field := range e.EventType.Fields {
 		value := e.Fields[i]
 		preparedFields = append(preparedFields,
-			&pb.QueryEventByBlockRangeResponseValue{
+			&pb.BlockEventsResponseValue{
 				Name:  field.Identifier,
 				Value: value.String(),
 			},
@@ -94,13 +96,13 @@ func EventToJSON(e *cadence.Event) []*pb.QueryEventByBlockRangeResponseValue {
 	return preparedFields
 }
 
-func BlockEventsToJSON(e []client.BlockEvents) []*pb.QueryEventByBlockRangeResponseEvent {
-	result := make([]*pb.QueryEventByBlockRangeResponseEvent, 0)
+func BlockEventsToJSON(e []client.BlockEvents) []*pb.BlockEventsResponseEvent {
+	result := make([]*pb.BlockEventsResponseEvent, 0)
 
 	for _, blockEvent := range e {
 		if len(blockEvent.Events) > 0 {
 			for _, event := range blockEvent.Events {
-				result = append(result, &pb.QueryEventByBlockRangeResponseEvent{
+				result = append(result, &pb.BlockEventsResponseEvent{
 					BlockId:          blockEvent.Height,
 					Index:            int64(event.EventIndex),
 					Type:             event.Type,
