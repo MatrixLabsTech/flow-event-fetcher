@@ -111,6 +111,7 @@ func BlockEventsToJSON(e []client.BlockEvents) []*pb.BlockEventsResponseEvent {
 					TransactionId:    event.TransactionID.String(),
 					TransactionIndex: int64(event.TransactionIndex),
 					Values:           EventToJSON(&(event.Value)),
+					Payload:          event.Payload,
 				})
 			}
 		}

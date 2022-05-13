@@ -49,6 +49,7 @@ message BlockEventsResponseEvent {
     int64 transactionIndex = 6;
     google.protobuf.Timestamp timestamp = 7;
     repeated BlockEventsResponseValue values = 8;
+    bytes payload = 9;
 }
 
 message BlockEventsResponseValue {
