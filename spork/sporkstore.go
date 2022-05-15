@@ -386,7 +386,10 @@ func (ss *Store) QueryAllEventByBlockRange(ctx context.Context, start, end uint6
 
 	for n := range events {
 		sort.Slice(events[n].Events, func(i, j int) bool {
-			return events[n].Events[i].TransactionIndex < events[n].Events[j].TransactionIndex
+			if events[n].Events[i].TransactionIndex != events[n].Events[j].TransactionIndex {
+				return events[n].Events[i].TransactionIndex < events[n].Events[j].TransactionIndex
+			}
+			return events[n].Events[i].EventIndex < events[n].Events[j].EventIndex
 		})
 	}
 
