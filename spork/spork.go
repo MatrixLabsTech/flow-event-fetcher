@@ -103,9 +103,6 @@ func BlockEventsToJSON(e []client.BlockEvents) []*pb.BlockEventsResponseEvent {
 	for _, blockEvent := range e {
 		if len(blockEvent.Events) > 0 {
 			for _, event := range blockEvent.Events {
-				println("type:", event.Type)
-				println("transactionId:", event.TransactionID.String())
-				println("transactionIndex:", event.TransactionIndex)
 				result = append(result, &pb.BlockEventsResponseEvent{
 					BlockId:          blockEvent.Height,
 					Index:            int64(event.EventIndex),

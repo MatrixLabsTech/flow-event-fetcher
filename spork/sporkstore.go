@@ -487,9 +487,7 @@ func (ss *Store) getEventByTransactionID(wg *sync.WaitGroup,
 		errChan <- err
 		return
 	}
-	fmt.Println("transaction: ", id)
 	if transaction.Error != nil {
-		fmt.Println("error")
 		errTransactionChan <- &pb.QueryAllEventByBlockRangeResponseErrorTransaction{
 			Error:         transaction.Error.Error(),
 			TransactionId: id.String(),
