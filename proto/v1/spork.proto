@@ -12,9 +12,9 @@ import "google/protobuf/timestamp.proto";
 service Spork {
   rpc Version (VersionRequest) returns (VersionResponse) {}
   rpc SyncSpork(SyncSporkRequest) returns (SyncSporkResponse) {}
-  rpc QueryEventByBlockRange(QueryEventByBlockRangeRequest) returns (BlockEventsResponse) {}
+  rpc QueryEventByBlockRange(QueryEventByBlockRangeRequest) returns (QueryEventByBlockRangeResponse) {}
   rpc QueryLatestBlockHeight(QueryLatestBlockHeightRequest) returns (QueryLatestBlockHeightResponse) {}
-  rpc queryAllEventByBlockRange(QueryAllEventByBlockRangeRequest) returns (BlockEventsResponse) {}
+  rpc queryAllEventByBlockRange(QueryAllEventByBlockRangeRequest) returns (QueryAllEventByBlockRangeResponse) {}
 }
 
 message VersionRequest {}
@@ -36,7 +36,7 @@ message QueryEventByBlockRangeRequest {
   uint64 end = 3;
 }
 
-message BlockEventsResponse {
+message QueryEventByBlockRangeResponse {
   repeated BlockEventsResponseEvent events = 1;
 }
 
@@ -66,4 +66,14 @@ message QueryLatestBlockHeightResponse {
 message QueryAllEventByBlockRangeRequest {
   uint64 start = 1;
   uint64 end = 2;
+}
+
+message QueryAllEventByBlockRangeResponse {
+  repeated BlockEventsResponseEvent events = 1;
+  repeated QueryAllEventByBlockRangeResponseErrorTransaction ErrorTransactions = 2;
+}
+
+message QueryAllEventByBlockRangeResponseErrorTransaction {
+  string transactionId = 1;
+  string error = 2;
 }

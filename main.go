@@ -22,14 +22,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
-	"os"
-
 	"github.com/gin-gonic/gin"
 	_ "github.com/golang/protobuf/ptypes/timestamp"
 	log "github.com/sirupsen/logrus"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
+	"net/http"
+	"os"
 
 	_ "github.com/MatrixLabsTech/flow-event-fetcher/docs"
 	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
@@ -143,7 +142,7 @@ func queryEventByBlockRange(c *gin.Context) {
 // @Accept  application/json
 // @Product application/json
 // @Param data body pb.QueryAllEventByBlockRangeRequest true "data"
-// @Success 200 {object} []pb.BlockEventsResponseEvent
+// @Success 200 {object} pb.QueryAllEventByBlockRangeResponse
 // @Failure 500 {object} ResponseError
 // @Router /queryAllEventByBlockRange [post]
 func queryAllEventByBlockRange(c *gin.Context) {
@@ -158,7 +157,7 @@ func queryAllEventByBlockRange(c *gin.Context) {
 		queryAllEventByBlockRangeDto.Start,
 		queryAllEventByBlockRangeDto.End))
 
-	ret, err := flowClient.QueryAllEventByBlockRange(c,
+	ret, errTransactions, err := flowClient.QueryAllEventByBlockRange(c,
 		queryAllEventByBlockRangeDto.Start,
 		queryAllEventByBlockRangeDto.End)
 	if err != nil {
@@ -169,7 +168,11 @@ func queryAllEventByBlockRange(c *gin.Context) {
 
 	jsonRet := spork.BlockEventsToJSON(ret)
 	log.Info(fmt.Sprintf("Got %d events", len(jsonRet)))
-	c.JSON(http.StatusOK, jsonRet)
+	result := pb.QueryAllEventByBlockRangeResponse{
+		Events:            jsonRet,
+		ErrorTransactions: errTransactions,
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 // @title flow-event-fetcher API

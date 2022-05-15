@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 	"net/http"
 	"sort"
 	"sync"
@@ -338,42 +339,58 @@ func (ss *Store) Close() error {
 	return nil
 }
 
-func (ss *Store) QueryAllEventByBlockRange(ctx context.Context, start, end uint64) ([]client.BlockEvents, error) {
-	events := make([]client.BlockEvents, 0)
+func (ss *Store) QueryAllEventByBlockRange(ctx context.Context, start, end uint64) (events []client.BlockEvents,
+	errTransactions []*pb.QueryAllEventByBlockRangeResponseErrorTransaction, err error) {
+	events = make([]client.BlockEvents, 0)
+	errTransactions = make([]*pb.QueryAllEventByBlockRangeResponseErrorTransaction, 0)
 
 	resolvedAccessNodeList, err := ss.resolveAccessNodes(start, end)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	blockEventsChan := make(chan client.BlockEvents, end-start+1)
 	errChan := make(chan error, end-start+1)
+	errTransactionChan := make(chan *pb.QueryAllEventByBlockRangeResponseErrorTransaction, end-start+1)
 	var wg sync.WaitGroup
 	wg.Add(int(end - start + 1))
 	for i := range resolvedAccessNodeList {
 		flowClient, err := ss.getClient(&resolvedAccessNodeList[i])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for height := resolvedAccessNodeList[i].Start; height <= resolvedAccessNodeList[i].End; height++ {
-			go ss.getEventByBlockHeight(&wg, ctx, flowClient, height, blockEventsChan, errChan)
+			go ss.getEventByBlockHeight(&wg, ctx, flowClient, height, blockEventsChan, errTransactionChan, errChan)
 		}
 	}
 	wg.Wait()
 	close(blockEventsChan)
 	close(errChan)
+	close(errTransactionChan)
 
 	if len(errChan) > 0 {
-		return nil, <-errChan
+		return nil, nil, <-errChan
 	}
 	for e := range blockEventsChan {
 		events = append(events, e)
+	}
+
+	if len(errTransactionChan) > 0 {
+		for e := range errTransactionChan {
+			errTransactions = append(errTransactions, e)
+		}
 	}
 
 	sort.Slice(events, func(i, j int) bool {
 		return events[i].Height < events[j].Height
 	})
 
-	return events, nil
+	for n := range events {
+		sort.Slice(events[n].Events, func(i, j int) bool {
+			return events[n].Events[i].TransactionIndex < events[n].Events[j].TransactionIndex
+		})
+	}
+
+	return
 }
 
 func (ss *Store) getEventByBlockHeight(
@@ -382,6 +399,7 @@ func (ss *Store) getEventByBlockHeight(
 	flowClient *client.Client,
 	height uint64,
 	blockEventChan chan client.BlockEvents,
+	errTransactionChan chan *pb.QueryAllEventByBlockRangeResponseErrorTransaction,
 	errChan chan error) {
 
 	defer wg.Done()
@@ -404,7 +422,7 @@ func (ss *Store) getEventByBlockHeight(
 		go ss.getEventByCollectionID(&wgCollection,
 			ctx, flowClient,
 			block.BlockPayload.CollectionGuarantees[j].CollectionID,
-			eventChan, errChan)
+			eventChan, errTransactionChan, errChan)
 	}
 	wgCollection.Wait()
 	close(eventChan)
@@ -414,10 +432,7 @@ func (ss *Store) getEventByBlockHeight(
 	for e := range eventChan {
 		event.Events = append(event.Events, e...)
 	}
-	sort.Slice(event.Events, func(i, j int) bool {
-		return event.Events[i].EventIndex < event.Events[j].EventIndex ||
-			event.Events[i].TransactionIndex < event.Events[j].TransactionIndex
-	})
+
 	blockEventChan <- event
 }
 
@@ -427,6 +442,7 @@ func (ss *Store) getEventByCollectionID(
 	flowClient *client.Client,
 	id flow.Identifier,
 	eventChan chan []flow.Event,
+	errTransactionChan chan *pb.QueryAllEventByBlockRangeResponseErrorTransaction,
 	errChan chan error) {
 
 	defer wg.Done()
@@ -445,7 +461,7 @@ func (ss *Store) getEventByCollectionID(
 		go ss.getEventByTransactionID(&wgTransaction, ctx,
 			flowClient,
 			collection.TransactionIDs[i],
-			eventTransactionChan, errChan)
+			eventTransactionChan, errTransactionChan, errChan)
 	}
 	wgTransaction.Wait()
 	close(eventTransactionChan)
@@ -461,6 +477,7 @@ func (ss *Store) getEventByTransactionID(wg *sync.WaitGroup,
 	flowClient *client.Client,
 	id flow.Identifier,
 	eventChan chan []flow.Event,
+	errTransactionChan chan *pb.QueryAllEventByBlockRangeResponseErrorTransaction,
 	errChan chan error) {
 
 	defer wg.Done()
@@ -468,6 +485,15 @@ func (ss *Store) getEventByTransactionID(wg *sync.WaitGroup,
 	if err != nil {
 		log.Errorf("get transaction by id error: %s", err.Error())
 		errChan <- err
+		return
+	}
+	fmt.Println("transaction: ", id)
+	if transaction.Error != nil {
+		fmt.Println("error")
+		errTransactionChan <- &pb.QueryAllEventByBlockRangeResponseErrorTransaction{
+			Error:         transaction.Error.Error(),
+			TransactionId: id.String(),
+		}
 		return
 	}
 	eventChan <- transaction.Events

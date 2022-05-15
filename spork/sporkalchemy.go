@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 	"sync"
 
 	"github.com/onflow/flow-go-sdk/client"
@@ -107,8 +108,9 @@ func (alchemy *Alchemy) QueryLatestBlockHeight() (uint64, error) {
 }
 
 // QueryAllEventByBlockRange returns all events in a block range
-func (alchemy *Alchemy) QueryAllEventByBlockRange(ctx context.Context, startBlock uint64, endBlock uint64) ([]client.BlockEvents, error) {
-	return nil, errors.New("not implemented")
+func (alchemy *Alchemy) QueryAllEventByBlockRange(_ context.Context, _ uint64, _ uint64) ([]client.BlockEvents,
+	[]*pb.QueryAllEventByBlockRangeResponseErrorTransaction, error) {
+	return nil, nil, errors.New("not implemented")
 }
 
 // QueryEventByBlockRange returns events in a block range

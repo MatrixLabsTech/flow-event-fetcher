@@ -28,6 +28,10 @@ definitions:
         type: string
       index:
         type: integer
+      payload:
+        items:
+          type: integer
+        type: array
       timestamp:
         $ref: '#/definitions/timestamppb.Timestamp'
       transactionId:
@@ -54,6 +58,24 @@ definitions:
         type: integer
       start:
         type: integer
+    type: object
+  v1.QueryAllEventByBlockRangeResponse:
+    properties:
+      ErrorTransactions:
+        items:
+          $ref: '#/definitions/v1.QueryAllEventByBlockRangeResponseErrorTransaction'
+        type: array
+      events:
+        items:
+          $ref: '#/definitions/v1.BlockEventsResponseEvent'
+        type: array
+    type: object
+  v1.QueryAllEventByBlockRangeResponseErrorTransaction:
+    properties:
+      error:
+        type: string
+      transactionId:
+        type: string
     type: object
   v1.QueryEventByBlockRangeRequest:
     properties:
@@ -99,9 +121,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/v1.BlockEventsResponseEvent'
-            type: array
+            $ref: '#/definitions/v1.QueryAllEventByBlockRangeResponse'
         "500":
           description: Internal Server Error
           schema:
