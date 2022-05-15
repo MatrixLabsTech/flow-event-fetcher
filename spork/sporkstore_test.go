@@ -104,13 +104,13 @@ func TestE2EFlowTransferAllEventFetchingBatchConsistence(t *testing.T) {
 
 	t.Log("TestE2EFlowTransferAllEventFetching: fetching events")
 
-	eventsFromBatch1, err := storeBatch1.QueryAllEventByBlockRange(context.Background(), uint64(testEventStartBlock), uint64(testEventEndBlock))
+	eventsFromBatch1, _, err := storeBatch1.QueryAllEventByBlockRange(context.Background(), uint64(testEventStartBlock), uint64(testEventEndBlock))
 
 	require.Nil(t, err, "err should be nil for storeBatch1 query")
 
 	t.Log("TestE2EFlowTransferAllEventFetching: fetching events with batch  1 got ", len(eventsFromBatch1))
 
-	eventsFromBatch200, err := storeBatch200.QueryAllEventByBlockRange(context.Background(), uint64(testEventStartBlock), uint64(testEventEndBlock))
+	eventsFromBatch200, _, err := storeBatch200.QueryAllEventByBlockRange(context.Background(), uint64(testEventStartBlock), uint64(testEventEndBlock))
 
 	require.Nil(t, err, "err should be nil for storeBatch200 query")
 
