@@ -70,7 +70,7 @@ message QueryAllEventByBlockRangeRequest {
 
 message QueryAllEventByBlockRangeResponse {
   repeated BlockEventsResponseEvent events = 1;
-  repeated QueryAllEventByBlockRangeResponseErrorTransaction ErrorTransactions = 2;
+  repeated QueryAllEventByBlockRangeResponseErrorTransaction errorTransactions = 2;
 }
 
 message QueryAllEventByBlockRangeResponseErrorTransaction {
