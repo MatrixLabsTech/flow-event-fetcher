@@ -350,7 +350,7 @@ func (ss *Store) QueryAllEventByBlockRange(ctx context.Context, start, end uint6
 	}
 	blockEventsChan := make(chan client.BlockEvents, end-start+1)
 	errChan := make(chan error, end-start+1)
-	errTransactionChan := make(chan *pb.QueryAllEventByBlockRangeResponseErrorTransaction, end-start+1)
+	errTransactionChan := make(chan []*pb.QueryAllEventByBlockRangeResponseErrorTransaction, end-start+1)
 	var wg sync.WaitGroup
 	wg.Add(int(end - start + 1))
 	for i := range resolvedAccessNodeList {
@@ -376,7 +376,9 @@ func (ss *Store) QueryAllEventByBlockRange(ctx context.Context, start, end uint6
 
 	if len(errTransactionChan) > 0 {
 		for e := range errTransactionChan {
-			errTransactions = append(errTransactions, e)
+			if len(e) > 0 {
+				errTransactions = append(errTransactions, e...)
+			}
 		}
 	}
 
@@ -402,7 +404,7 @@ func (ss *Store) getEventByBlockHeight(
 	flowClient *client.Client,
 	height uint64,
 	blockEventChan chan client.BlockEvents,
-	errTransactionChan chan *pb.QueryAllEventByBlockRangeResponseErrorTransaction,
+	errTransactionChan chan []*pb.QueryAllEventByBlockRangeResponseErrorTransaction,
 	errChan chan error) {
 
 	defer wg.Done()
@@ -419,21 +421,35 @@ func (ss *Store) getEventByBlockHeight(
 		Events:         make([]flow.Event, 0),
 	}
 	eventChan := make(chan []flow.Event, len(block.BlockPayload.CollectionGuarantees))
+	errTransactionCollectionChan := make(chan []*pb.QueryAllEventByBlockRangeResponseErrorTransaction,
+		len(block.BlockPayload.CollectionGuarantees))
 	var wgCollection sync.WaitGroup
 	wgCollection.Add(len(block.BlockPayload.CollectionGuarantees))
 	for j := range block.BlockPayload.CollectionGuarantees {
 		go ss.getEventByCollectionID(&wgCollection,
 			ctx, flowClient,
 			block.BlockPayload.CollectionGuarantees[j].CollectionID,
-			eventChan, errTransactionChan, errChan)
+			eventChan, errTransactionCollectionChan, errChan)
 	}
 	wgCollection.Wait()
 	close(eventChan)
+	close(errTransactionCollectionChan)
 	if len(errChan) > 0 {
 		return
 	}
+	errTransactionCollection := make([]*pb.QueryAllEventByBlockRangeResponseErrorTransaction, 0)
+	if len(errTransactionCollectionChan) > 0 {
+		for e := range errTransactionCollectionChan {
+			if len(e) > 0 {
+				errTransactionCollection = append(errTransactionCollection, e...)
+			}
+		}
+	}
 	for e := range eventChan {
 		event.Events = append(event.Events, e...)
+	}
+	if len(errTransactionCollection) > 0 {
+		errTransactionChan <- errTransactionCollection
 	}
 
 	blockEventChan <- event
@@ -445,7 +461,7 @@ func (ss *Store) getEventByCollectionID(
 	flowClient *client.Client,
 	id flow.Identifier,
 	eventChan chan []flow.Event,
-	errTransactionChan chan *pb.QueryAllEventByBlockRangeResponseErrorTransaction,
+	errTransactionsChan chan []*pb.QueryAllEventByBlockRangeResponseErrorTransaction,
 	errChan chan error) {
 
 	defer wg.Done()
@@ -457,6 +473,8 @@ func (ss *Store) getEventByCollectionID(
 	}
 
 	eventTransactionChan := make(chan []flow.Event, len(collection.TransactionIDs))
+	errTransactionChan := make(chan *pb.QueryAllEventByBlockRangeResponseErrorTransaction,
+		len(collection.TransactionIDs))
 
 	var wgTransaction sync.WaitGroup
 	wgTransaction.Add(len(collection.TransactionIDs))
@@ -468,9 +486,21 @@ func (ss *Store) getEventByCollectionID(
 	}
 	wgTransaction.Wait()
 	close(eventTransactionChan)
+	close(errTransactionChan)
 	events := make([]flow.Event, 0)
 	for e := range eventTransactionChan {
 		events = append(events, e...)
+	}
+	errTransactions := make([]*pb.QueryAllEventByBlockRangeResponseErrorTransaction, 0)
+	if len(errTransactionChan) > 0 {
+		for e := range errTransactionChan {
+			if e != nil {
+				errTransactions = append(errTransactions, e)
+			}
+		}
+	}
+	if len(errTransactions) > 0 {
+		errTransactionsChan <- errTransactions
 	}
 	eventChan <- events
 }
