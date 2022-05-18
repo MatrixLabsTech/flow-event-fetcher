@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MatrixLabsTech/flow-event-fetcher/spork"
@@ -32,7 +33,7 @@ func main() {
 	// store will automatically fetch events
 	// {19050753 19051853 access.mainnet.nodes.onflow.org:9000}
 	// with batchSize 200 blocks
-	ret, err := sporkStore.QueryEventByBlockRange(event, 13405050, 13405100)
+	ret, err := sporkStore.QueryEventByBlockRange(context.Background(), event, 13405050, 13405100)
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +44,7 @@ func main() {
 	// store will automatically fetch events with
 	// {19049753 19050753 access-001.mainnet13.nodes.onflow.org:9000}
 	// {19050753 19051484 access.mainnet.nodes.onflow.org:9000}
-	ret, err = sporkStore.QueryEventByBlockRange(event, 19049753, 19051484)
+	ret, err = sporkStore.QueryEventByBlockRange(context.Background(), event, 19049753, 19051484)
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +54,7 @@ func main() {
 
 	// store will automatically fetch events with
 	// {11905073 19051853 access.mainnet.nodes.onflow.org:9000}
-	ret, err = sporkStore.QueryEventByBlockRange(event, 19050753, 19051853)
+	ret, err = sporkStore.QueryEventByBlockRange(context.Background(), event, 19050753, 19051853)
 	if err != nil {
 		panic(err)
 	}
