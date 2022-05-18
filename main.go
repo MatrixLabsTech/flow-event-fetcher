@@ -87,7 +87,7 @@ func syncSpork(c *gin.Context) {
 // @Failure 500 {object} ResponseError
 // @Router /queryLatestBlockHeight [get]
 func queryLatestBlockHeight(c *gin.Context) {
-	height, err := flowClient.QueryLatestBlockHeight()
+	height, err := flowClient.QueryLatestBlockHeight(c)
 	if err != nil {
 		log.Error(err.Error())
 		c.JSON(http.StatusInternalServerError, ResponseError{Error: err.Error()})
@@ -120,7 +120,7 @@ func queryEventByBlockRange(c *gin.Context) {
 		queryEventByBlockRangeDto.Start,
 		queryEventByBlockRangeDto.End))
 
-	ret, err := flowClient.QueryEventByBlockRange(
+	ret, err := flowClient.QueryEventByBlockRange(c,
 		queryEventByBlockRangeDto.Event,
 		queryEventByBlockRangeDto.Start,
 		queryEventByBlockRangeDto.End)

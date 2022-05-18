@@ -29,11 +29,10 @@ import (
 )
 
 type FlowClient interface {
-	Close() error
 	String() string
 	SyncSpork() error
-	QueryLatestBlockHeight() (uint64, error)
-	QueryEventByBlockRange(event string, start, end uint64) ([]client.BlockEvents, error)
+	QueryLatestBlockHeight(ctx context.Context) (uint64, error)
+	QueryEventByBlockRange(ctx context.Context, event string, start, end uint64) ([]client.BlockEvents, error)
 	QueryAllEventByBlockRange(ctx context.Context, start, end uint64) ([]client.BlockEvents,
 		[]*pb.QueryAllEventByBlockRangeResponseErrorTransaction, error)
 }

@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 	"net/http"
 	"sort"
 	"sync"
@@ -32,6 +31,8 @@ import (
 	"github.com/onflow/flow-go-sdk/client"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+
+	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 )
 
 var (
@@ -121,19 +122,10 @@ func ReadFlowNetworkConfigFromUrl(stage string) ([]Spork, error) {
 }
 
 type Store struct {
-	sync.Mutex
-
-	SporkList []Spork
-
-	stage string
-
-	// client set in NewSporkStore
-	clients sync.Map
-
-	readClient *client.Client
-
+	SporkList      []Spork
+	stage          string
+	clients        sync.Map // client set in NewSporkStore
 	maxQueryBlocks uint64
-
 	queryBatchSize uint64
 }
 
@@ -143,12 +135,15 @@ func NewSporkStore(stage string, maxQueryBlocks uint64, queryBatchSize uint64) *
 	if err != nil {
 		panic(err)
 	}
-	err = ss.newReadClient()
-	if err != nil {
-		panic(err)
-	}
-
 	return ss
+}
+
+func (ss *Store) getLatestClient() (*client.Client, error) {
+	node, err := ss.latestAccessNode()
+	if err != nil {
+		return nil, err
+	}
+	return ss.getClient(node)
 }
 
 func (ss *Store) String() string {
@@ -175,6 +170,7 @@ func (ss *Store) getClient(r *ResolvedAccessNodeList) (*client.Client, error) {
 	log.Info("Start to ping")
 
 	if err := c.Ping(ctx); err != nil {
+		//If an error has been reported at this time, the connection has been disconnected and needs to be reconnected.
 		return ss.setClient(r)
 	}
 	return c, nil
@@ -185,12 +181,20 @@ func (ss *Store) newClient(endpoint string) (*client.Client, error) {
 }
 
 func (ss *Store) SyncSpork() error {
-	ss.Lock()
-	defer ss.Unlock()
-	var err error = nil
+	var err error
 	ss.SporkList, err = ReadFlowNetworkConfigFromUrl(ss.stage)
 	log.Info("sync", ss.SporkList)
 	return err
+}
+
+func (ss *Store) latestAccessNode() (*ResolvedAccessNodeList, error) {
+	if len(ss.SporkList) == 0 {
+		return nil, errors.New("no spork available")
+	}
+	return &ResolvedAccessNodeList{
+		Index:      len(ss.SporkList) - 1,
+		AccessNode: ss.SporkList[len(ss.SporkList)-1].AccessNode,
+	}, nil
 }
 
 func (ss *Store) resolveAccessNodes(start uint64, end uint64) ([]ResolvedAccessNodeList, error) {
@@ -258,52 +262,19 @@ func (ss *Store) locateNode(index uint64) (int, error) {
 	return ret, nil
 }
 
-func (ss *Store) newReadClient() error {
-	log.Info("new read client")
-	flowClient, err := ss.newClient(ss.SporkList[len(ss.SporkList)-1].AccessNode)
+func (ss *Store) QueryLatestBlockHeight(ctx context.Context) (uint64, error) {
+	c, err := ss.getLatestClient()
 	if err != nil {
-		return err
+		return 0, err
 	}
-	ss.readClient = flowClient
-	for i := range ss.SporkList {
-		c, err := ss.newClient(ss.SporkList[i].AccessNode)
-		if err != nil {
-			return err
-		}
-		ss.clients.Store(i, c)
-	}
-	return nil
-}
-
-func (ss *Store) checkReaderHealthy() error {
-	ctx := context.Background()
-	log.Info("Start to ping")
-
-	err := ss.readClient.Ping(ctx)
-	if err != nil {
-		log.Error("client is not healthy ", err)
-		// close readClient
-		ss.readClient.Close()
-		return ss.newReadClient()
-	}
-	return nil
-}
-
-func (ss *Store) QueryLatestBlockHeight() (uint64, error) {
-	ss.Lock()
-	defer ss.Unlock()
-	ss.checkReaderHealthy()
-	ctx := context.Background()
-	header, err := ss.readClient.GetLatestBlockHeader(ctx, true)
+	header, err := c.GetLatestBlockHeader(ctx, true)
 	if err != nil {
 		return 0, err
 	}
 	return header.Height, err
 }
 
-func (ss *Store) QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error) {
-	ctx := context.Background()
-
+func (ss *Store) QueryEventByBlockRange(ctx context.Context, event string, start uint64, end uint64) ([]client.BlockEvents, error) {
 	events := make([]client.BlockEvents, 0)
 
 	resolvedAccessNodeList, err := ss.resolveAccessNodes(start, end)
@@ -327,16 +298,6 @@ func (ss *Store) QueryEventByBlockRange(event string, start uint64, end uint64) 
 
 	}
 	return events, nil
-}
-
-// Close connection
-func (ss *Store) Close() error {
-	if ss.readClient != nil {
-		err := ss.readClient.Close()
-		log.Info("close read client")
-		return err
-	}
-	return nil
 }
 
 func (ss *Store) QueryAllEventByBlockRange(ctx context.Context, start, end uint64) (events []client.BlockEvents,

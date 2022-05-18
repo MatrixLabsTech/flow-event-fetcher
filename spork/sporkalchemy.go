@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 	"sync"
 
 	"github.com/onflow/flow-go-sdk/client"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 )
 
 type Alchemy struct {
@@ -89,7 +90,7 @@ func (alchemy *Alchemy) newClient() error {
 }
 
 // QueryLatestBlockHeight queries the latest block height
-func (alchemy *Alchemy) QueryLatestBlockHeight() (uint64, error) {
+func (alchemy *Alchemy) QueryLatestBlockHeight(_ context.Context) (uint64, error) {
 	// thread safe
 	alchemy.Lock()
 	defer alchemy.Unlock()
@@ -114,7 +115,7 @@ func (alchemy *Alchemy) QueryAllEventByBlockRange(_ context.Context, _ uint64, _
 }
 
 // QueryEventByBlockRange returns events in a block range
-func (alchemy *Alchemy) QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error) {
+func (alchemy *Alchemy) QueryEventByBlockRange(_ context.Context, event string, start uint64, end uint64) ([]client.BlockEvents, error) {
 	// thread safe
 	alchemy.Lock()
 	defer alchemy.Unlock()
