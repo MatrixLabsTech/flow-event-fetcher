@@ -11,9 +11,6 @@ func TestSporkStoreInit(t *testing.T) {
 	store := NewSporkStore(
 		"mainnet", 5000, 100)
 	require.NotNil(t, store, "store should not be nil")
-
-	err := store.checkReaderHealthy()
-	require.Nil(t, err, "err should be nil for healthy reader")
 }
 
 func TestE2EFlowTransferEventFetchingCrossSpork(t *testing.T) {
@@ -36,13 +33,13 @@ func TestE2EFlowTransferEventFetchingCrossSpork(t *testing.T) {
 	testEventEndBlock := 21291000 + 2000
 
 	t.Log("TestE2EFlowTransferEventFetching: fetching events")
-	eventsFromBatch200, err := storeBatch200.QueryEventByBlockRange(testEventSignature, uint64(testEventStartBlock), uint64(testEventEndBlock))
+	eventsFromBatch200, err := storeBatch200.QueryEventByBlockRange(context.Background(), testEventSignature, uint64(testEventStartBlock), uint64(testEventEndBlock))
 
 	require.Nil(t, err, "err should be nil for storeBatch200 query")
 
 	t.Log("TestE2EFlowTransferEventFetching: fetching events with batch 100 got ", len(eventsFromBatch200))
 
-	eventsFromBatch100, err := storeBatch100.QueryEventByBlockRange(testEventSignature, uint64(testEventStartBlock), uint64(testEventEndBlock))
+	eventsFromBatch100, err := storeBatch100.QueryEventByBlockRange(context.Background(), testEventSignature, uint64(testEventStartBlock), uint64(testEventEndBlock))
 
 	require.Nil(t, err, "err should be nil for storeBatch100 query")
 
@@ -72,13 +69,13 @@ func TestE2EFlowTransferEventFetchingBatchConsistence(t *testing.T) {
 
 	t.Log("TestE2EFlowTransferEventFetching: fetching events")
 
-	eventsFromBatch1, err := storeBatch1.QueryEventByBlockRange(testEventSignature, uint64(testEventStartBlock), uint64(testEventEndBlock))
+	eventsFromBatch1, err := storeBatch1.QueryEventByBlockRange(context.Background(), testEventSignature, uint64(testEventStartBlock), uint64(testEventEndBlock))
 
 	require.Nil(t, err, "err should be nil for storeBatch1 query")
 
 	t.Log("TestE2EFlowTransferEventFetching: fetching events with batch  1 got ", len(eventsFromBatch1))
 
-	eventsFromBatch200, err := storeBatch200.QueryEventByBlockRange(testEventSignature, uint64(testEventStartBlock), uint64(testEventEndBlock))
+	eventsFromBatch200, err := storeBatch200.QueryEventByBlockRange(context.Background(), testEventSignature, uint64(testEventStartBlock), uint64(testEventEndBlock))
 
 	require.Nil(t, err, "err should be nil for storeBatch200 query")
 
