@@ -21,6 +21,8 @@ import (
 	"fmt"
 
 	"github.com/MatrixLabsTech/flow-event-fetcher/spork"
+
+	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 )
 
 func main() {
@@ -61,4 +63,16 @@ func main() {
 	jsonRet = spork.BlockEventsToJSON(ret)
 	fmt.Println(jsonRet)
 	fmt.Println("Total fetched events:", len(jsonRet))
+
+	// store will automatically fetch events with
+	// {11905073 19051853 access.mainnet.nodes.onflow.org:9000}
+	errorTransactions := make([]*pb.QueryAllEventByBlockRangeResponseErrorTransaction, 0)
+	ret, errorTransactions, err = sporkStore.QueryAllEventByBlockRange(context.Background(), 19050753, 19051853)
+	if err != nil {
+		panic(err)
+	}
+	jsonRet = spork.BlockEventsToJSON(ret)
+	fmt.Println(jsonRet)
+	fmt.Println("Total fetched events:", len(jsonRet))
+	fmt.Println(errorTransactions)
 }
