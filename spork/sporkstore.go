@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/onflow/flow-go-sdk"
@@ -38,6 +39,7 @@ import (
 var (
 	NetworkConfigURL = "https://raw.githubusercontent.com/onflow/flow/master/sporks.json"
 	TestnetEndpoints = "access.devnet.nodes.onflow.org:9000"
+	MainnetEndpoints = "access.mainnet.nodes.onflow.org:9000"
 )
 
 type Spork struct {
@@ -191,9 +193,13 @@ func (ss *Store) latestAccessNode() (*ResolvedAccessNodeList, error) {
 	if len(ss.SporkList) == 0 {
 		return nil, errors.New("no spork available")
 	}
+	endpoint := ss.SporkList[len(ss.SporkList)-1].AccessNode
+	if strings.Index(endpoint, "mainet") > -1 {
+		endpoint = MainnetEndpoints
+	}
 	return &ResolvedAccessNodeList{
 		Index:      len(ss.SporkList) - 1,
-		AccessNode: ss.SporkList[len(ss.SporkList)-1].AccessNode,
+		AccessNode: endpoint,
 	}, nil
 }
 
