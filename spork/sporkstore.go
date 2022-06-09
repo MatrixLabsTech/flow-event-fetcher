@@ -193,8 +193,9 @@ func (ss *Store) latestAccessNode() (*ResolvedAccessNodeList, error) {
 	if len(ss.SporkList) == 0 {
 		return nil, errors.New("no spork available")
 	}
-	endpoint := ss.SporkList[len(ss.SporkList)-1].AccessNode
-	if strings.Index(endpoint, "mainet") > -1 {
+	endpoint := TestnetEndpoints
+	fmt.Println(ss.SporkList[len(ss.SporkList)-1].AccessNode)
+	if strings.Index(ss.SporkList[len(ss.SporkList)-1].AccessNode, "mainnet") > -1 {
 		endpoint = MainnetEndpoints
 	}
 	return &ResolvedAccessNodeList{
