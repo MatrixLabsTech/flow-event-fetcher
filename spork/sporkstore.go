@@ -179,7 +179,7 @@ func (ss *Store) getClient(r *ResolvedAccessNodeList) (*client.Client, error) {
 }
 
 func (ss *Store) newClient(endpoint string) (*client.Client, error) {
-	return client.New(endpoint, grpc.WithInsecure(), grpc.WithMaxMsgSize(40e6))
+	return client.New(endpoint, grpc.WithInsecure(), grpc.WithMaxMsgSize(4<<30))
 }
 
 func (ss *Store) SyncSpork() error {
