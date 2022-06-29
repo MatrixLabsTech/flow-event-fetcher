@@ -14,6 +14,7 @@ service Spork {
   rpc SyncSpork(SyncSporkRequest) returns (SyncSporkResponse) {}
   rpc QueryEventByBlockRange(QueryEventByBlockRangeRequest) returns (QueryEventByBlockRangeResponse) {}
   rpc QueryLatestBlockHeight(QueryLatestBlockHeightRequest) returns (QueryLatestBlockHeightResponse) {}
+  rpc queryAllEventByBlockRange(QueryAllEventByBlockRangeRequest) returns (QueryAllEventByBlockRangeResponse) {}
 }
 
 message VersionRequest {}
@@ -36,10 +37,10 @@ message QueryEventByBlockRangeRequest {
 }
 
 message QueryEventByBlockRangeResponse {
-  repeated QueryEventByBlockRangeResponseEvent events = 1;
+  repeated BlockEventsResponseEvent events = 1;
 }
 
-message QueryEventByBlockRangeResponseEvent {
+message BlockEventsResponseEvent {
     uint64 blockId = 1;
     string eventID = 2;
     int64 index = 3;
@@ -47,10 +48,11 @@ message QueryEventByBlockRangeResponseEvent {
     string transactionId = 5;
     int64 transactionIndex = 6;
     google.protobuf.Timestamp timestamp = 7;
-    repeated QueryEventByBlockRangeResponseValue values = 8;
+    repeated BlockEventsResponseValue values = 8;
+    bytes payload = 9;
 }
 
-message QueryEventByBlockRangeResponseValue {
+message BlockEventsResponseValue {
     string name = 1;
     string value = 2;
 }
@@ -59,4 +61,19 @@ message QueryLatestBlockHeightRequest {}
 
 message QueryLatestBlockHeightResponse {
   uint64 latestBlockHeight = 1;
+}
+
+message QueryAllEventByBlockRangeRequest {
+  uint64 start = 1;
+  uint64 end = 2;
+}
+
+message QueryAllEventByBlockRangeResponse {
+  repeated BlockEventsResponseEvent events = 1;
+  repeated QueryAllEventByBlockRangeResponseErrorTransaction errorTransactions = 2;
+}
+
+message QueryAllEventByBlockRangeResponseErrorTransaction {
+  string transactionId = 1;
+  string error = 2;
 }

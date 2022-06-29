@@ -23,6 +23,43 @@ var doc = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/queryAllEventByBlockRange": {
+            "post": {
+                "description": "queries all event by block range",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "flow-event-fetcher"
+                ],
+                "summary": "queries all event by block range",
+                "parameters": [
+                    {
+                        "description": "data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.QueryAllEventByBlockRangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.QueryAllEventByBlockRangeResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
         "/queryEventByBlockRange": {
             "post": {
                 "description": "queries event by block range",
@@ -50,7 +87,7 @@ var doc = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/v1.QueryEventByBlockRangeResponseEvent"
+                                "$ref": "#/definitions/v1.BlockEventsResponseEvent"
                             }
                         }
                     },
@@ -158,21 +195,7 @@ var doc = `{
                 }
             }
         },
-        "v1.QueryEventByBlockRangeRequest": {
-            "type": "object",
-            "properties": {
-                "end": {
-                    "type": "integer"
-                },
-                "event": {
-                    "type": "string"
-                },
-                "start": {
-                    "type": "integer"
-                }
-            }
-        },
-        "v1.QueryEventByBlockRangeResponseEvent": {
+        "v1.BlockEventsResponseEvent": {
             "type": "object",
             "properties": {
                 "blockId": {
@@ -183,6 +206,12 @@ var doc = `{
                 },
                 "index": {
                     "type": "integer"
+                },
+                "payload": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "timestamp": {
                     "$ref": "#/definitions/timestamppb.Timestamp"
@@ -199,12 +228,12 @@ var doc = `{
                 "values": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1.QueryEventByBlockRangeResponseValue"
+                        "$ref": "#/definitions/v1.BlockEventsResponseValue"
                     }
                 }
             }
         },
-        "v1.QueryEventByBlockRangeResponseValue": {
+        "v1.BlockEventsResponseValue": {
             "type": "object",
             "properties": {
                 "name": {
@@ -212,6 +241,59 @@ var doc = `{
                 },
                 "value": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.QueryAllEventByBlockRangeRequest": {
+            "type": "object",
+            "properties": {
+                "end": {
+                    "type": "integer"
+                },
+                "start": {
+                    "type": "integer"
+                }
+            }
+        },
+        "v1.QueryAllEventByBlockRangeResponse": {
+            "type": "object",
+            "properties": {
+                "ErrorTransactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.QueryAllEventByBlockRangeResponseErrorTransaction"
+                    }
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.BlockEventsResponseEvent"
+                    }
+                }
+            }
+        },
+        "v1.QueryAllEventByBlockRangeResponseErrorTransaction": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "transactionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.QueryEventByBlockRangeRequest": {
+            "type": "object",
+            "properties": {
+                "end": {
+                    "type": "integer"
+                },
+                "event": {
+                    "type": "string"
+                },
+                "start": {
+                    "type": "integer"
                 }
             }
         },

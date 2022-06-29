@@ -2,6 +2,7 @@ package spork
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -9,9 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 )
 
-type SporkAlchemy struct {
+type Alchemy struct {
 	sync.Mutex
 
 	endPoint string
@@ -26,7 +29,7 @@ type SporkAlchemy struct {
 }
 
 // init initializes the spork alchemy
-func (alchemy *SporkAlchemy) init() error {
+func (alchemy *Alchemy) init() error {
 	alchemy.Lock()
 	defer alchemy.Unlock()
 
@@ -40,8 +43,8 @@ func (alchemy *SporkAlchemy) init() error {
 	return nil
 }
 
-func NewSporkAlchemy(endPoint string, apiKey string, maxQueryBlocks uint64, queryBatchSize uint64) *SporkAlchemy {
-	ss := &SporkAlchemy{
+func NewSporkAlchemy(endPoint string, apiKey string, maxQueryBlocks uint64, queryBatchSize uint64) *Alchemy {
+	ss := &Alchemy{
 		endPoint:       endPoint,
 		maxQueryBlocks: maxQueryBlocks,
 		queryBatchSize: queryBatchSize,
@@ -59,7 +62,7 @@ func NewSporkAlchemy(endPoint string, apiKey string, maxQueryBlocks uint64, quer
 	return ss
 }
 
-func (alchemy *SporkAlchemy) checkClientHealthy() error {
+func (alchemy *Alchemy) checkClientHealthy() error {
 	err := alchemy.flowClient.Ping(alchemy.apiContext)
 	if err != nil {
 		// close previous client
@@ -73,7 +76,7 @@ func (alchemy *SporkAlchemy) checkClientHealthy() error {
 	return nil
 }
 
-func (alchemy *SporkAlchemy) newClient() error {
+func (alchemy *Alchemy) newClient() error {
 	log.Info("SporkAlchemy: initializing flow client")
 	log.Info(alchemy.endPoint)
 
@@ -86,8 +89,8 @@ func (alchemy *SporkAlchemy) newClient() error {
 	return nil
 }
 
-// QueryLatestBlockHeight
-func (alchemy *SporkAlchemy) QueryLatestBlockHeight() (uint64, error) {
+// QueryLatestBlockHeight queries the latest block height
+func (alchemy *Alchemy) QueryLatestBlockHeight(_ context.Context) (uint64, error) {
 	// thread safe
 	alchemy.Lock()
 	defer alchemy.Unlock()
@@ -105,8 +108,14 @@ func (alchemy *SporkAlchemy) QueryLatestBlockHeight() (uint64, error) {
 	return block.Height, nil
 }
 
-// queryEventByBlockRange
-func (alchemy *SporkAlchemy) QueryEventByBlockRange(event string, start uint64, end uint64) ([]client.BlockEvents, error) {
+// QueryAllEventByBlockRange returns all events in a block range
+func (alchemy *Alchemy) QueryAllEventByBlockRange(_ context.Context, _ uint64, _ uint64) ([]client.BlockEvents,
+	[]*pb.QueryAllEventByBlockRangeResponseErrorTransaction, error) {
+	return nil, nil, errors.New("not implemented")
+}
+
+// QueryEventByBlockRange returns events in a block range
+func (alchemy *Alchemy) QueryEventByBlockRange(_ context.Context, event string, start uint64, end uint64) ([]client.BlockEvents, error) {
 	// thread safe
 	alchemy.Lock()
 	defer alchemy.Unlock()
@@ -120,33 +129,32 @@ func (alchemy *SporkAlchemy) QueryEventByBlockRange(event string, start uint64, 
 
 	tmpQueryBatchSize := alchemy.queryBatchSize
 
-
-    ret, err := IterQueryEventByBlockRange(alchemy.apiContext, alchemy.flowClient, event, start, end, tmpQueryBatchSize)
-    if err != nil {
-        return nil, err
-    }
-    events = append(events, ret...)
+	ret, err := IterQueryEventByBlockRange(alchemy.apiContext, alchemy.flowClient, event, start, end, tmpQueryBatchSize)
+	if err != nil {
+		return nil, err
+	}
+	events = append(events, ret...)
 
 	return events, nil
 }
 
 // SyncSpork with not implementation log
-func (alchemy *SporkAlchemy) SyncSpork() error {
+func (alchemy *Alchemy) SyncSpork() error {
 	return nil
 }
 
 // String method return the string representation of the spork alchemy
-func (alchemy *SporkAlchemy) String() string {
+func (alchemy *Alchemy) String() string {
 	// all basic information
 	return fmt.Sprintf("SporkAlchemy: {endPoint: %s, maxQueryBlocks: %d, queryBatchSize: %d}", alchemy.endPoint, alchemy.maxQueryBlocks, alchemy.queryBatchSize)
 }
 
-// close the spork alchemy
-func (alchemy *SporkAlchemy) Close() error {
-    if alchemy.flowClient != nil {
-        err := alchemy.flowClient.Close()
-        log.Info("SporkAlchemy: flow client closed")
-        return err
-    }
-    return nil
+// Close the spork alchemy
+func (alchemy *Alchemy) Close() error {
+	if alchemy.flowClient != nil {
+		err := alchemy.flowClient.Close()
+		log.Info("SporkAlchemy: flow client closed")
+		return err
+	}
+	return nil
 }

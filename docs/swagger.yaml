@@ -20,16 +20,7 @@ definitions:
           9999-12-31T23:59:59Z inclusive.
         type: integer
     type: object
-  v1.QueryEventByBlockRangeRequest:
-    properties:
-      end:
-        type: integer
-      event:
-        type: string
-      start:
-        type: integer
-    type: object
-  v1.QueryEventByBlockRangeResponseEvent:
+  v1.BlockEventsResponseEvent:
     properties:
       blockId:
         type: integer
@@ -37,6 +28,10 @@ definitions:
         type: string
       index:
         type: integer
+      payload:
+        items:
+          type: integer
+        type: array
       timestamp:
         $ref: '#/definitions/timestamppb.Timestamp'
       transactionId:
@@ -47,15 +42,49 @@ definitions:
         type: string
       values:
         items:
-          $ref: '#/definitions/v1.QueryEventByBlockRangeResponseValue'
+          $ref: '#/definitions/v1.BlockEventsResponseValue'
         type: array
     type: object
-  v1.QueryEventByBlockRangeResponseValue:
+  v1.BlockEventsResponseValue:
     properties:
       name:
         type: string
       value:
         type: string
+    type: object
+  v1.QueryAllEventByBlockRangeRequest:
+    properties:
+      end:
+        type: integer
+      start:
+        type: integer
+    type: object
+  v1.QueryAllEventByBlockRangeResponse:
+    properties:
+      ErrorTransactions:
+        items:
+          $ref: '#/definitions/v1.QueryAllEventByBlockRangeResponseErrorTransaction'
+        type: array
+      events:
+        items:
+          $ref: '#/definitions/v1.BlockEventsResponseEvent'
+        type: array
+    type: object
+  v1.QueryAllEventByBlockRangeResponseErrorTransaction:
+    properties:
+      error:
+        type: string
+      transactionId:
+        type: string
+    type: object
+  v1.QueryEventByBlockRangeRequest:
+    properties:
+      end:
+        type: integer
+      event:
+        type: string
+      start:
+        type: integer
     type: object
   v1.QueryLatestBlockHeightResponse:
     properties:
@@ -76,6 +105,30 @@ info:
   title: flow-event-fetcher API
   version: 1.0.1
 paths:
+  /queryAllEventByBlockRange:
+    post:
+      consumes:
+      - application/json
+      description: queries all event by block range
+      parameters:
+      - description: data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/v1.QueryAllEventByBlockRangeRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.QueryAllEventByBlockRangeResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: queries all event by block range
+      tags:
+      - flow-event-fetcher
   /queryEventByBlockRange:
     post:
       consumes:
@@ -93,7 +146,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/v1.QueryEventByBlockRangeResponseEvent'
+              $ref: '#/definitions/v1.BlockEventsResponseEvent'
             type: array
         "500":
           description: Internal Server Error

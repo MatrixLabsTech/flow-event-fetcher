@@ -17,9 +17,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MatrixLabsTech/flow-event-fetcher/spork"
+
+	pb "github.com/MatrixLabsTech/flow-event-fetcher/proto/v1"
 )
 
 func main() {
@@ -32,7 +35,7 @@ func main() {
 	// store will automatically fetch events
 	// {19050753 19051853 access.mainnet.nodes.onflow.org:9000}
 	// with batchSize 200 blocks
-	ret, err := sporkStore.QueryEventByBlockRange(event, 13405050, 13405100)
+	ret, err := sporkStore.QueryEventByBlockRange(context.Background(), event, 13405050, 13405100)
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +46,7 @@ func main() {
 	// store will automatically fetch events with
 	// {19049753 19050753 access-001.mainnet13.nodes.onflow.org:9000}
 	// {19050753 19051484 access.mainnet.nodes.onflow.org:9000}
-	ret, err = sporkStore.QueryEventByBlockRange(event, 19049753, 19051484)
+	ret, err = sporkStore.QueryEventByBlockRange(context.Background(), event, 19049753, 19051484)
 	if err != nil {
 		panic(err)
 	}
@@ -53,11 +56,23 @@ func main() {
 
 	// store will automatically fetch events with
 	// {11905073 19051853 access.mainnet.nodes.onflow.org:9000}
-	ret, err = sporkStore.QueryEventByBlockRange(event, 19050753, 19051853)
+	ret, err = sporkStore.QueryEventByBlockRange(context.Background(), event, 19050753, 19051853)
 	if err != nil {
 		panic(err)
 	}
 	jsonRet = spork.BlockEventsToJSON(ret)
 	fmt.Println(jsonRet)
 	fmt.Println("Total fetched events:", len(jsonRet))
+
+	// store will automatically fetch events with
+	// {11905073 19051853 access.mainnet.nodes.onflow.org:9000}
+	errorTransactions := make([]*pb.QueryAllEventByBlockRangeResponseErrorTransaction, 0)
+	ret, errorTransactions, err = sporkStore.QueryAllEventByBlockRange(context.Background(), 19050753, 19051853)
+	if err != nil {
+		panic(err)
+	}
+	jsonRet = spork.BlockEventsToJSON(ret)
+	fmt.Println(jsonRet)
+	fmt.Println("Total fetched events:", len(jsonRet))
+	fmt.Println(errorTransactions)
 }
